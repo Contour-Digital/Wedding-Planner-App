@@ -8,6 +8,8 @@ import { useCategories } from "@/lib/hooks/useCategories";
 import { useVendors } from "@/lib/hooks/useVendors";
 import { categoryTotals, weddingTotals } from "@/lib/utils/budget";
 import { formatCurrency, sum } from "@/lib/utils/currency";
+import { computeExpenseTotals, PAYMENT_STATUS_LABEL } from "@/lib/utils/paymentStatus";
+import { downloadCsv } from "@/lib/utils/csv";
 import { StatCard } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { CategorySection } from "@/components/budget/CategorySection";
@@ -61,6 +63,29 @@ export default function BudgetPage() {
     setModalOpen(true);
   }
 
+  function exportCsv() {
+    const rows = expenses.map((e) => {
+      const category = categories.find((c) => c.id === e.category_id);
+      const vendor = vendors.find((v) => v.id === e.vendor_id);
+      const t = computeExpenseTotals(e.total_amount, e.deposit_amount, e.instalments);
+      return [
+        e.name,
+        category?.name ?? "",
+        vendor?.name ?? "",
+        e.total_amount,
+        e.deposit_amount,
+        t.paidAmount,
+        t.outstandingAmount,
+        PAYMENT_STATUS_LABEL[t.status],
+      ];
+    });
+    downloadCsv(
+      `budget-${new Date().toISOString().slice(0, 10)}.csv`,
+      ["Name", "Category", "Vendor", "Total Amount", "Deposit Amount", "Paid Amount", "Outstanding Amount", "Payment Status"],
+      rows
+    );
+  }
+
   return (
     <div>
       <PageHeader title="Budget" />
@@ -78,7 +103,12 @@ export default function BudgetPage() {
           />
         </div>
 
-        <Button onClick={openAdd}>+ Add expense</Button>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={openAdd}>+ Add expense</Button>
+          <Button variant="secondary" onClick={exportCsv} disabled={expenses.length === 0}>
+            Export CSV
+          </Button>
+        </div>
 
         <BudgetBreakdownChart categories={byCategory} currency={wedding?.currency} />
 

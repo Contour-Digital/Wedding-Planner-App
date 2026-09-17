@@ -8,10 +8,11 @@ import { useVendors } from "@/lib/hooks/useVendors";
 import { useExpenses } from "@/lib/hooks/useExpenses";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { VendorStatusBadge } from "@/components/vendors/VendorStatusBadge";
+import { VendorStatusBadge, VENDOR_STATUS_LABEL } from "@/components/vendors/VendorStatusBadge";
 import { VendorModal } from "@/components/vendors/VendorModal";
 import { formatCurrency, sum } from "@/lib/utils/currency";
 import { computeExpenseTotals } from "@/lib/utils/paymentStatus";
+import { downloadCsv } from "@/lib/utils/csv";
 import { canSeeFinancials } from "@/lib/utils/permissions";
 
 export default function VendorsPage() {
@@ -22,11 +23,30 @@ export default function VendorsPage() {
   const [modalOpen, setModalOpen] = useState(false);
   const showFinancials = canSeeFinancials(role);
 
+  function exportCsv() {
+    // Linked Spend is financial data — omit the column entirely rather than
+    // export it for roles the rest of this page already hides it from
+    // (canSeeFinancials gates the same figures on each vendor card below).
+    const headers = ["Name", "Type", "Status", ...(showFinancials ? ["Linked Spend"] : [])];
+    const rows = vendors.map((vendor) => {
+      const base = [vendor.name, vendor.type ?? "", VENDOR_STATUS_LABEL[vendor.status]];
+      if (!showFinancials) return base;
+      const committed = sum(expenses.filter((e) => e.vendor_id === vendor.id).map((e) => e.total_amount));
+      return [...base, committed];
+    });
+    downloadCsv(`vendors-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
+  }
+
   return (
     <div>
       <PageHeader title="Vendors" />
       <div className="space-y-4 p-4 sm:p-6">
-        <Button onClick={() => setModalOpen(true)}>+ Add vendor</Button>
+        <div className="flex flex-wrap gap-2">
+          <Button onClick={() => setModalOpen(true)}>+ Add vendor</Button>
+          <Button variant="secondary" onClick={exportCsv} disabled={vendors.length === 0}>
+            Export CSV
+          </Button>
+        </div>
 
         <div className="grid grid-cols-1 gap-3 sm:grid-cols-2">
           {vendors.map((vendor) => {
