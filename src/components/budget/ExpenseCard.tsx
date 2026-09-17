@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { Card } from "@/components/ui/Card";
 import { PaymentStatusBadge } from "./PaymentStatusBadge";
 import { formatCurrency } from "@/lib/utils/currency";
@@ -54,7 +55,11 @@ export function ExpenseCard({
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="font-medium">{expense.name}</p>
-          {vendor && <p className="text-xs text-muted">{vendor.name}</p>}
+          {vendor && (
+            <Link href={`/vendors/${vendor.id}`} className="text-xs text-primaryStrong underline">
+              {vendor.name}
+            </Link>
+          )}
         </div>
         <div className="text-right">
           <p className="font-semibold">{formatCurrency(expense.total_amount, currency)}</p>
