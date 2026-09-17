@@ -23,6 +23,12 @@ import { createClient as createServerClient } from "@/lib/supabase/server";
 // Requires a SUPABASE_SERVICE_ROLE_KEY env var (Supabase dashboard → Project
 // Settings → API → service_role secret) — server-only, no NEXT_PUBLIC_
 // prefix. Without it, this route fails clearly rather than silently.
+//
+// Also rate limited per wedding (see invite_requests below) — a sane cap
+// on how many invites one wedding can send per hour, regardless of who's
+// calling this route or how.
+const INVITE_RATE_LIMIT = 20;
+
 export async function POST(request: Request) {
   let body: { weddingId?: string; email?: string; role?: string };
   try {
@@ -84,6 +90,27 @@ export async function POST(request: Request) {
   const admin = createSupabaseAdminClient(supabaseUrl, serviceRoleKey, {
     auth: { autoRefreshToken: false, persistSession: false },
   });
+
+  // Rate limit: at most INVITE_RATE_LIMIT invite requests per wedding per
+  // rolling hour, counted from invite_requests rather than in-memory state
+  // (this route runs on stateless serverless functions, so in-memory state
+  // wouldn't be shared across instances or survive a cold start). Logged
+  // before any Resend/admin work runs, so a retried failure still counts.
+  const oneHourAgo = new Date(Date.now() - 60 * 60 * 1000).toISOString();
+  const { count: recentInviteCount } = await admin
+    .from("invite_requests")
+    .select("id", { count: "exact", head: true })
+    .eq("wedding_id", weddingId)
+    .gte("created_at", oneHourAgo);
+
+  if ((recentInviteCount ?? 0) >= INVITE_RATE_LIMIT) {
+    return NextResponse.json(
+      { error: "Too many invites sent for this wedding recently. Please try again in a bit." },
+      { status: 429 }
+    );
+  }
+
+  await admin.from("invite_requests").insert({ wedding_id: weddingId, requested_by: user.id });
 
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? new URL(request.url).origin;
   const redirectTo = `${siteUrl}/onboarding`;
