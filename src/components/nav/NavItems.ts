@@ -20,9 +20,10 @@ export interface NavItem {
 }
 
 // The bottom tab bar's fixed set of primary sections, and the order swiping
-// between tabs on mobile follows. Sharing, Activity and Settings live in the
-// hamburger menu instead, so this stays a short, memorable, swipeable row.
-export const PRIMARY_NAV_KEYS = ["dashboard", "tasks", "budget", "vendors", "wedding-day"];
+// between tabs on mobile follows. Sharing, Activity, Settings and Vendors
+// live in the hamburger menu instead, so this stays a short, memorable,
+// swipeable row.
+export const PRIMARY_NAV_KEYS = ["dashboard", "tasks", "budget", "inspiration", "wedding-day"];
 
 export const ALL_NAV_ITEMS: NavItem[] = [
   { key: "dashboard", href: "/dashboard", label: "Dashboard", icon: HomeIcon },

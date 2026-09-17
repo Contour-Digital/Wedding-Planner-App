@@ -10,11 +10,11 @@ import { visibleNavSections } from "@/lib/utils/permissions";
 import { CloseIcon, MenuIcon } from "@/components/ui/icons";
 
 // Everything that isn't one of the 5 primary bottom-tab sections lives here
-// on mobile: Sharing, Activity, Settings, plus Sign out. Replaces the plain
-// "Sign out" button in the mobile header. Desktop keeps its own sign-out
-// button in Header — the Sidebar already shows every section as a full list,
-// so a second menu would be redundant there.
-const MENU_KEYS = ["inspiration", "sharing", "activity", "settings"];
+// on mobile: Vendors, Sharing, Activity, Settings, plus Sign out. Replaces
+// the plain "Sign out" button in the mobile header. Desktop keeps its own
+// sign-out button in Header — the Sidebar already shows every section as a
+// full list, so a second menu would be redundant there.
+const MENU_KEYS = ["vendors", "sharing", "activity", "settings"];
 
 export function MobileMenu() {
   const [open, setOpen] = useState(false);
