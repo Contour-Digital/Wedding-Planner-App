@@ -197,8 +197,6 @@ export interface InspirationPhoto {
 export interface InspirationPhotoComment {
   id: string;
   photo_id: string;
-  x: number;
-  y: number;
   comment: string;
   created_by: string | null;
   created_at: string;
