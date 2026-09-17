@@ -31,7 +31,13 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen">
       <Sidebar />
-      <main className="flex-1 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:pb-0">
+      {/* min-w-0 overrides the flex default of min-width: auto — without
+          it, a flex item never shrinks below its content's natural width,
+          so any unwrapped content deep inside (e.g. Inspiration's
+          horizontally-scrolling category pill row) pushes this whole
+          element, and the page along with it, wider than the viewport
+          instead of scrolling contained within just that one row. */}
+      <main className="min-w-0 flex-1 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:pb-0">
         <SwipeNav>{children}</SwipeNav>
       </main>
       <BottomNav />
