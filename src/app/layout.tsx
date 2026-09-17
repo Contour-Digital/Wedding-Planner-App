@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { WeddingProvider } from "@/lib/wedding/WeddingProvider";
+import { InstallPrompt } from "@/components/InstallPrompt";
 
 export const metadata: Metadata = {
   title: "Wedding Planner",
@@ -28,6 +29,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
     <html lang="en">
       <body className="font-body min-h-screen antialiased">
         <WeddingProvider>{children}</WeddingProvider>
+        <InstallPrompt />
       </body>
     </html>
   );

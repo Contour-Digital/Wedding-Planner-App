@@ -8,6 +8,8 @@ const config: Config = {
         primary: "var(--color-primary)",
         primaryStrong: "var(--color-primary-strong)",
         onPrimary: "var(--color-on-primary)",
+        onPrimaryMuted: "var(--color-on-primary-muted)",
+        onPrimaryLine: "var(--color-on-primary-line)",
         secondary: "var(--color-secondary)",
         surface: "var(--color-surface)",
         ink: "var(--color-ink)",

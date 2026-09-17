@@ -12,6 +12,12 @@
   /* Text colour to overlay ON a solid --color-primary fill (buttons, the
      dashboard countdown card). Dark, since the sage fill is light-mid. */
   --color-on-primary: #2a2e28;
+  /* Same dark tone as --color-on-primary, softened — for secondary text
+     (e.g. the venue line) sitting on a solid --color-primary header. */
+  --color-on-primary-muted: rgba(42, 46, 40, 0.72);
+  /* Same tone again, faint — for borders/hover fills on controls that sit
+     directly on a solid --color-primary header (sign-out button, menu icon). */
+  --color-on-primary-line: rgba(42, 46, 40, 0.28);
   --color-secondary: #ffffff;
   --color-surface: #ffffff;
   --color-ink: #2a2e28;

@@ -20,6 +20,7 @@ export function WeddingSettingsForm() {
     venue: wedding?.venue ?? "",
     location: wedding?.location ?? "",
     guest_count: wedding?.guest_count != null ? String(wedding.guest_count) : "",
+    joint_email: wedding?.joint_email ?? "",
     currency: wedding?.currency ?? "USD",
     total_budget: wedding ? String(wedding.total_budget) : "0",
   });
@@ -94,6 +95,17 @@ export function WeddingSettingsForm() {
               value={form.partner_2}
               onChange={(e) => setForm({ ...form, partner_2: e.target.value })}
               required
+            />
+          </Field>
+          <Field
+            label="Joint email"
+            hint="Optional — replies to invite emails sent from Sharing go here instead of to you personally"
+          >
+            <Input
+              type="email"
+              value={form.joint_email}
+              onChange={(e) => setForm({ ...form, joint_email: e.target.value })}
+              placeholder="thenickandchloe@example.com"
             />
           </Field>
         </div>

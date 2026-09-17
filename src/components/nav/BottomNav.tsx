@@ -24,6 +24,7 @@ export function BottomNav() {
     <nav className="no-print fixed inset-x-0 bottom-0 z-40 flex border-t border-line bg-white/95 backdrop-blur sm:hidden">
       {items.map((item) => {
         const active = pathname.startsWith(item.href);
+        const Icon = item.icon;
         return (
           <Link
             key={item.key}
@@ -33,7 +34,7 @@ export function BottomNav() {
               active ? "text-primaryStrong" : "text-muted"
             )}
           >
-            <span className="text-lg leading-none">{item.icon}</span>
+            <Icon className="h-5 w-5" />
             {item.label}
           </Link>
         );

@@ -43,6 +43,7 @@ export default function OnboardingPage() {
   );
   const [partner2Name, setPartner2Name] = useState("");
   const [partner2Email, setPartner2Email] = useState("");
+  const [jointEmail, setJointEmail] = useState("");
   const [weddingDate, setWeddingDate] = useState("");
   const [location, setLocation] = useState("");
   const [guestCount, setGuestCount] = useState("");
@@ -51,6 +52,7 @@ export default function OnboardingPage() {
   const [categoryTargets, setCategoryTargets] = useState<Record<string, string>>({});
 
   const emailValid = partner2Email.trim() === "" || EMAIL_RE.test(partner2Email.trim());
+  const jointEmailValid = jointEmail.trim() === "" || EMAIL_RE.test(jointEmail.trim());
   const guestCountNumber = Number(guestCount) || 0;
 
   function toggleCategory(name: string) {
@@ -74,7 +76,7 @@ export default function OnboardingPage() {
   const totalTarget = selectedCategories.reduce((sum, name) => sum + (Number(categoryTargets[name]) || 0), 0);
 
   const canProceed = [
-    partner1Name.trim() !== "" && partner2Name.trim() !== "" && emailValid,
+    partner1Name.trim() !== "" && partner2Name.trim() !== "" && emailValid && jointEmailValid,
     weddingDate !== "",
     true, // location — always skippable
     true, // guest count — always skippable
@@ -121,6 +123,7 @@ export default function OnboardingPage() {
         name,
         target_budget: Number(categoryTargets[name]) || 0,
       })),
+      p_joint_email: jointEmail.trim() || null,
     });
 
     setSubmitting(false);
@@ -172,6 +175,18 @@ export default function OnboardingPage() {
               />
             </Field>
             {!emailValid && <p className="text-sm text-danger">That email doesn&apos;t look right.</p>}
+            <Field
+              label="Joint email"
+              hint="Optional — replies to invite emails you send from Sharing go here instead of to you personally"
+            >
+              <Input
+                type="email"
+                value={jointEmail}
+                onChange={(e) => setJointEmail(e.target.value)}
+                placeholder="thenickandchloe@example.com"
+              />
+            </Field>
+            {!jointEmailValid && <p className="text-sm text-danger">That email doesn&apos;t look right.</p>}
           </div>
         )}
 

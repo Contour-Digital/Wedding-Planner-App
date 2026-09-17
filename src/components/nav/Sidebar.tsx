@@ -15,7 +15,9 @@ export function Sidebar() {
 
   return (
     <aside className="no-print hidden w-60 shrink-0 flex-col border-r border-line bg-white sm:flex">
-      <div className="border-b border-line p-5">
+      {/* h-20 matches the Header's height exactly, so this block's bottom
+          border lines up with the header's bottom border where they meet. */}
+      <div className="flex h-20 flex-col justify-center border-b border-line px-5">
         <p className="font-display text-lg font-semibold leading-tight">
           {wedding ? `${wedding.partner_1} & ${wedding.partner_2}` : "Wedding Planner"}
         </p>
@@ -24,6 +26,7 @@ export function Sidebar() {
       <nav className="flex flex-1 flex-col gap-1 p-3">
         {items.map((item) => {
           const active = pathname.startsWith(item.href);
+          const Icon = item.icon;
           return (
             <Link
               key={item.key}
@@ -33,7 +36,7 @@ export function Sidebar() {
                 active ? "bg-primary/10 text-primaryStrong" : "text-ink hover:bg-line"
               )}
             >
-              <span className="text-base">{item.icon}</span>
+              <Icon className="h-5 w-5 shrink-0" />
               {item.label}
             </Link>
           );

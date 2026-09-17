@@ -2,6 +2,7 @@
 
 import { useEffect } from "react";
 import { createPortal } from "react-dom";
+import { CloseIcon } from "./icons";
 
 export function Modal({
   open,
@@ -33,7 +34,7 @@ export function Modal({
             aria-label="Close"
             className="flex h-9 w-9 items-center justify-center rounded-full text-muted hover:bg-line"
           >
-            ✕
+            <CloseIcon className="h-5 w-5" />
           </button>
         </div>
         {children}

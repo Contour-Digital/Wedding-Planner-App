@@ -54,6 +54,7 @@ export interface Wedding {
   location: string | null;
   guest_count: number | null;
   currency: string;
+  joint_email: string | null;
   primary_colour: string;
   secondary_colour: string;
   total_budget: number;

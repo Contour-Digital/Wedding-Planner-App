@@ -2,6 +2,7 @@
 
 import { useCallback, useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
+import { useRealtimeTable } from "./useRealtimeTable";
 import type { WeddingMember } from "@/lib/types/database";
 
 export function useMembers(weddingId: string | null | undefined) {
@@ -23,6 +24,8 @@ export function useMembers(weddingId: string | null | undefined) {
   useEffect(() => {
     load();
   }, [load]);
+
+  useRealtimeTable("wedding_members", weddingId, load);
 
   return { members, loading, refresh: load };
 }

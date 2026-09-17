@@ -7,6 +7,7 @@ import { ALL_NAV_ITEMS } from "./NavItems";
 import { useWedding } from "@/lib/wedding/WeddingProvider";
 import { createClient } from "@/lib/supabase/client";
 import { visibleNavSections } from "@/lib/utils/permissions";
+import { CloseIcon, MenuIcon } from "@/components/ui/icons";
 
 // Everything that isn't one of the 5 primary bottom-tab sections lives here
 // on mobile: Sharing, Activity, Settings, plus Sign out. Replaces the plain
@@ -37,9 +38,9 @@ export function MobileMenu() {
         onClick={() => setOpen((v) => !v)}
         aria-label={open ? "Close menu" : "Open menu"}
         aria-expanded={open}
-        className="flex h-10 w-10 items-center justify-center rounded-full border border-line text-lg text-ink"
+        className="flex h-10 w-10 items-center justify-center rounded-full border border-onPrimaryLine text-onPrimary"
       >
-        {open ? "✕" : "☰"}
+        {open ? <CloseIcon className="h-5 w-5" /> : <MenuIcon className="h-5 w-5" />}
       </button>
 
       {open && (
@@ -54,17 +55,20 @@ export function MobileMenu() {
           <div className="absolute right-0 top-12 z-50 w-52 overflow-hidden rounded-2xl border border-line bg-white shadow-lg">
             {items.length > 0 && (
               <nav className="flex flex-col p-1.5">
-                {items.map((item) => (
-                  <Link
-                    key={item.key}
-                    href={item.href}
-                    onClick={() => setOpen(false)}
-                    className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-ink hover:bg-line"
-                  >
-                    <span className="text-base">{item.icon}</span>
-                    {item.label}
-                  </Link>
-                ))}
+                {items.map((item) => {
+                  const Icon = item.icon;
+                  return (
+                    <Link
+                      key={item.key}
+                      href={item.href}
+                      onClick={() => setOpen(false)}
+                      className="flex items-center gap-2.5 rounded-xl px-3 py-2.5 text-sm font-medium text-ink hover:bg-line"
+                    >
+                      <Icon className="h-5 w-5 shrink-0" />
+                      {item.label}
+                    </Link>
+                  );
+                })}
               </nav>
             )}
             <div className={items.length > 0 ? "border-t border-line p-1.5" : "p-1.5"}>

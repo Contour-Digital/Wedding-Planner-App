@@ -22,34 +22,57 @@ export default function SharingPage() {
   const [email, setEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<WeddingRole>("timeline_viewer");
   const [error, setError] = useState<string | null>(null);
+  const [notice, setNotice] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
 
   const canManage = canManageMembers(role);
 
   async function sendInvite() {
-    if (!wedding || !user || !email.trim()) return;
+    if (!wedding || !user) {
+      setError("Still loading your wedding — try again in a moment.");
+      return;
+    }
+    if (!email.trim()) {
+      setError("Enter an email address.");
+      return;
+    }
     setSending(true);
     setError(null);
+    setNotice(null);
 
-    const { error } = await supabase.from("wedding_members").insert({
-      wedding_id: wedding.id,
-      invited_email: email.trim().toLowerCase(),
-      role: inviteRole,
-    });
-
-    if (error) {
-      setError(error.message.includes("duplicate") ? "That person already has access." : error.message);
-    } else {
-      await logActivity(supabase, {
-        weddingId: wedding.id,
-        userId: user.id,
-        actionType: "member.invited",
-        description: `Invited ${email.trim()} as ${ROLE_LABEL[inviteRole]}.`,
-        entityType: "wedding_member",
+    let result: { ok?: boolean; emailSent?: boolean; error?: string };
+    try {
+      const res = await fetch("/api/invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ weddingId: wedding.id, email: email.trim(), role: inviteRole }),
       });
-      setEmail("");
-      refresh();
+      result = await res.json();
+      if (!res.ok) {
+        setError(result.error ?? "Couldn't send that invite — please try again.");
+        setSending(false);
+        return;
+      }
+    } catch {
+      setError("Couldn't reach the server — check your connection and try again.");
+      setSending(false);
+      return;
     }
+
+    await logActivity(supabase, {
+      weddingId: wedding.id,
+      userId: user.id,
+      actionType: "member.invited",
+      description: `Invited ${email.trim()} as ${ROLE_LABEL[inviteRole]}.`,
+      entityType: "wedding_member",
+    });
+    setNotice(
+      result.emailSent
+        ? `Invite email sent to ${email.trim()}.`
+        : `${email.trim()} already has an account — they now have access, no email needed.`
+    );
+    setEmail("");
+    refresh();
     setSending(false);
   }
 
@@ -80,7 +103,8 @@ export default function SharingPage() {
         <Card className="space-y-3">
           <h3 className="font-display text-lg font-semibold">Invite someone</h3>
           <p className="text-xs text-muted">
-            They'll get access as soon as they sign up or sign in with this email.
+            We'll email them a sign-in link right away. If they already have an account, they get access
+            immediately instead — no email needed.
           </p>
           <div className="flex flex-col gap-2 sm:flex-row">
             <Field label="Email">
@@ -98,6 +122,7 @@ export default function SharingPage() {
           </div>
           <p className="text-xs text-muted">{ROLE_DESCRIPTION[inviteRole]}</p>
           {error && <p className="text-sm text-danger">{error}</p>}
+          {notice && <p className="text-sm text-good">{notice}</p>}
           <Button onClick={sendInvite} disabled={sending}>
             {sending ? "Inviting…" : "Send invite"}
           </Button>
