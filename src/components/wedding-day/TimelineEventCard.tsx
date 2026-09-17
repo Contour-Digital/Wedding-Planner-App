@@ -1,10 +1,12 @@
 "use client";
 
+import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useWedding } from "@/lib/wedding/WeddingProvider";
 import { logActivity } from "@/lib/activity/logActivity";
 import { Card } from "@/components/ui/Card";
 import { Badge } from "@/components/ui/Badge";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { formatTime } from "@/lib/utils/date";
 import { canEdit } from "@/lib/utils/permissions";
 import type { TimelineEvent, TimelineEventShared } from "@/lib/types/database";
@@ -31,10 +33,11 @@ export function TimelineEventCard({
   const isCeremony = event.managed_type === "ceremony";
   const privateNotes = "private_notes" in event ? event.private_notes : null;
   const editable = canEdit(role);
+  const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   async function handleDelete() {
+    setConfirmingDelete(false);
     if (isCeremony || !wedding || !user) return;
-    if (!confirm(`Remove "${event.title}" from the run sheet?`)) return;
     await supabase.from("timeline_events").delete().eq("id", event.id);
     await logActivity(supabase, {
       weddingId: wedding.id,
@@ -96,13 +99,20 @@ export function TimelineEventCard({
               Edit
             </button>
             {!isCeremony && (
-              <button onClick={handleDelete} className="font-medium text-danger">
+              <button onClick={() => setConfirmingDelete(true)} className="font-medium text-danger">
                 Remove
               </button>
             )}
           </div>
         </div>
       )}
+      <ConfirmDialog
+        open={confirmingDelete}
+        title="Remove run-sheet item"
+        message={`Remove "${event.title}" from the run sheet?`}
+        onConfirm={handleDelete}
+        onCancel={() => setConfirmingDelete(false)}
+      />
     </Card>
   );
 }

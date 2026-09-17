@@ -8,6 +8,7 @@ import { logActivity } from "@/lib/activity/logActivity";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { formatCurrency } from "@/lib/utils/currency";
 
 // Rename-in-place: renaming a category is just an UPDATE, so every expense
@@ -23,8 +24,11 @@ export function CategoryManager() {
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editTarget, setEditTarget] = useState("");
+  const [removingId, setRemovingId] = useState<string | null>(null);
 
   if (!wedding) return null;
+
+  const removingCategory = categories.find((c) => c.id === removingId) ?? null;
 
   async function addCategory() {
     if (!newName.trim()) return;
@@ -64,6 +68,7 @@ export function CategoryManager() {
   }
 
   async function removeCategory(id: string) {
+    setRemovingId(null);
     const uncategorised = categories.find((c) => c.is_uncategorised);
     if (uncategorised) {
       // Preserve existing expenses by moving them to Uncategorised instead
@@ -121,7 +126,7 @@ export function CategoryManager() {
                     >
                       Edit
                     </Button>
-                    <Button variant="ghost" onClick={() => removeCategory(c.id)} className="shrink-0 text-danger">
+                    <Button variant="ghost" onClick={() => setRemovingId(c.id)} className="shrink-0 text-danger">
                       Remove
                     </Button>
                   </>
@@ -143,6 +148,18 @@ export function CategoryManager() {
         </div>
         <Button onClick={addCategory}>Add</Button>
       </div>
+
+      <ConfirmDialog
+        open={removingCategory !== null}
+        title="Remove category"
+        message={
+          removingCategory
+            ? `Remove "${removingCategory.name}"? Any expenses in it move to Uncategorised — nothing is deleted.`
+            : ""
+        }
+        onConfirm={() => removingCategory && removeCategory(removingCategory.id)}
+        onCancel={() => setRemovingId(null)}
+      />
     </Card>
   );
 }
