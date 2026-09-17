@@ -9,6 +9,11 @@
 -- src/lib/utils/permissions.ts). A category is safe to delete: photos in
 -- it fall back to category_id = null ("Uncategorized" in the UI) via
 -- ON DELETE SET NULL, never deleted or orphaned.
+--
+-- Every CREATE POLICY below is preceded by DROP POLICY IF EXISTS —
+-- Postgres has no CREATE POLICY IF NOT EXISTS, so without that guard this
+-- file isn't safe to re-run once it's gotten partway through (which is
+-- exactly what happened here: a partial run left this needing a retry).
 
 create table if not exists inspiration_categories (
   id uuid primary key default gen_random_uuid(),
@@ -36,6 +41,7 @@ create index if not exists inspiration_photos_category_id_idx on inspiration_pho
 alter table inspiration_categories enable row level security;
 alter table inspiration_photos enable row level security;
 
+drop policy if exists "inspiration_categories: select by wedding members" on inspiration_categories;
 create policy "inspiration_categories: select by wedding members"
 on inspiration_categories for select
 to authenticated
@@ -48,6 +54,7 @@ using (
   )
 );
 
+drop policy if exists "inspiration_categories: insert by editors" on inspiration_categories;
 create policy "inspiration_categories: insert by editors"
 on inspiration_categories for insert
 to authenticated
@@ -60,6 +67,7 @@ with check (
   )
 );
 
+drop policy if exists "inspiration_categories: update by editors" on inspiration_categories;
 create policy "inspiration_categories: update by editors"
 on inspiration_categories for update
 to authenticated
@@ -72,6 +80,7 @@ using (
   )
 );
 
+drop policy if exists "inspiration_categories: delete by editors" on inspiration_categories;
 create policy "inspiration_categories: delete by editors"
 on inspiration_categories for delete
 to authenticated
@@ -84,6 +93,7 @@ using (
   )
 );
 
+drop policy if exists "inspiration_photos: select by wedding members" on inspiration_photos;
 create policy "inspiration_photos: select by wedding members"
 on inspiration_photos for select
 to authenticated
@@ -96,6 +106,7 @@ using (
   )
 );
 
+drop policy if exists "inspiration_photos: insert by editors" on inspiration_photos;
 create policy "inspiration_photos: insert by editors"
 on inspiration_photos for insert
 to authenticated
@@ -108,6 +119,7 @@ with check (
   )
 );
 
+drop policy if exists "inspiration_photos: delete by editors" on inspiration_photos;
 create policy "inspiration_photos: delete by editors"
 on inspiration_photos for delete
 to authenticated
@@ -145,6 +157,7 @@ on conflict (id) do update set
 -- photo's category is a mutable attribute on its DB row (reassigning it
 -- shouldn't mean moving the underlying file). storage.foldername(name)
 -- splits into ['weddings', wedding_id, 'inspiration'], so [2] = wedding_id.
+drop policy if exists "inspiration-photos: writable by wedding editors" on storage.objects;
 create policy "inspiration-photos: writable by wedding editors"
 on storage.objects for insert
 to authenticated
@@ -159,6 +172,7 @@ with check (
   )
 );
 
+drop policy if exists "inspiration-photos: deletable by wedding editors" on storage.objects;
 create policy "inspiration-photos: deletable by wedding editors"
 on storage.objects for delete
 to authenticated
