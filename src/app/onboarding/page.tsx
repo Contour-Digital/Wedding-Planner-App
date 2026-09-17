@@ -6,19 +6,29 @@ import { createClient } from "@/lib/supabase/client";
 import { useWedding } from "@/lib/wedding/WeddingProvider";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Select } from "@/components/ui/Input";
-import { ColorPicker } from "@/components/ui/ColorPicker";
 import { CURRENCIES } from "@/lib/constants";
+import { DEFAULT_EXPENSE_CATEGORIES, estimateCategoryBudget } from "@/lib/utils/categoryEstimates";
+import { formatCurrency } from "@/lib/utils/currency";
 
-const STEP_LABELS = ["You & your partner", "Wedding date", "Location", "Currency & theme", "Budget"];
+const STEP_LABELS = [
+  "You & your partner",
+  "Wedding date",
+  "Location",
+  "Guest count",
+  "Currency",
+  "Categories",
+  "Budget targets",
+];
 const TOTAL_STEPS = STEP_LABELS.length;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-// Five short steps rather than one long form — each screen asks one thing,
-// so it reads fine on a phone and nobody has to scroll a wall of fields
-// before they can start planning. Nothing is written to the database until
-// the very last step, which calls create_wedding_for_current_user() once,
-// atomically (wedding + owner membership + partner invite + default
-// categories + the protected Ceremony row all happen together).
+// Short steps rather than one long form — each screen asks one thing, so it
+// reads fine on a phone and nobody has to scroll a wall of fields before
+// they can start planning. Nothing is written to the database until the
+// very last step, which calls create_wedding_for_current_user() once,
+// atomically (wedding + owner membership + partner invite + only the
+// expense categories the couple picked, each seeded with its own target
+// budget, + the protected Ceremony row — all happen together).
 export default function OnboardingPage() {
   const router = useRouter();
   const supabase = createClient();
@@ -35,19 +45,42 @@ export default function OnboardingPage() {
   const [partner2Email, setPartner2Email] = useState("");
   const [weddingDate, setWeddingDate] = useState("");
   const [location, setLocation] = useState("");
+  const [guestCount, setGuestCount] = useState("");
   const [currency, setCurrency] = useState("USD");
-  const [primaryColour, setPrimaryColour] = useState("#9CAF98");
-  const [secondaryColour, setSecondaryColour] = useState("#FFFFFF");
-  const [totalBudget, setTotalBudget] = useState("");
+  const [selectedCategories, setSelectedCategories] = useState<string[]>([...DEFAULT_EXPENSE_CATEGORIES]);
+  const [categoryTargets, setCategoryTargets] = useState<Record<string, string>>({});
 
   const emailValid = partner2Email.trim() === "" || EMAIL_RE.test(partner2Email.trim());
+  const guestCountNumber = Number(guestCount) || 0;
+
+  function toggleCategory(name: string) {
+    setSelectedCategories((prev) =>
+      prev.includes(name) ? prev.filter((c) => c !== name) : [...prev, name]
+    );
+  }
+
+  function setCategoryTarget(name: string, value: string) {
+    setCategoryTargets((prev) => ({ ...prev, [name]: value }));
+  }
+
+  function autoFillTargets() {
+    const next: Record<string, string> = { ...categoryTargets };
+    for (const name of selectedCategories) {
+      next[name] = String(estimateCategoryBudget(name, guestCountNumber));
+    }
+    setCategoryTargets(next);
+  }
+
+  const totalTarget = selectedCategories.reduce((sum, name) => sum + (Number(categoryTargets[name]) || 0), 0);
 
   const canProceed = [
     partner1Name.trim() !== "" && partner2Name.trim() !== "" && emailValid,
     weddingDate !== "",
     true, // location — always skippable
-    true, // currency + theme always have valid defaults
-    true, // budget — always skippable
+    true, // guest count — always skippable
+    true, // currency always has a valid default
+    selectedCategories.length > 0,
+    true, // budget targets — always skippable, default to $0 per category
   ][step];
 
   function goNext() {
@@ -81,10 +114,13 @@ export default function OnboardingPage() {
       p_partner_2_email: partner2Email.trim() || null,
       p_wedding_date: weddingDate,
       p_location: location.trim() || null,
+      p_guest_count: guestCount ? Number(guestCount) : null,
       p_currency: currency,
-      p_primary_colour: primaryColour,
-      p_secondary_colour: secondaryColour,
-      p_total_budget: Number(totalBudget) || 0,
+      p_total_budget: totalTarget,
+      p_categories: selectedCategories.map((name) => ({
+        name,
+        target_budget: Number(categoryTargets[name]) || 0,
+      })),
     });
 
     setSubmitting(false);
@@ -97,7 +133,7 @@ export default function OnboardingPage() {
   }
 
   return (
-    <div className="flex min-h-screen items-center justify-center bg-[#FBF8F5] px-4 py-10">
+    <div className="flex min-h-screen items-center justify-center bg-white px-4 py-10">
       <div className="w-full max-w-sm space-y-6">
         <div>
           <div className="mb-4 flex gap-1.5">
@@ -168,8 +204,28 @@ export default function OnboardingPage() {
         {step === 3 && (
           <div className="space-y-4">
             <div>
-              <h1 className="font-display text-2xl font-semibold text-ink">Currency &amp; theme</h1>
-              <p className="mt-1 text-sm text-muted">Pick colours with the wheel or type a hex code — you can change these any time in Settings.</p>
+              <h1 className="font-display text-2xl font-semibold text-ink">How many guests?</h1>
+              <p className="mt-1 text-sm text-muted">
+                A rough number is fine — it's used to suggest starting budgets for each category next.
+              </p>
+            </div>
+            <Field label="Guest count" hint="Optional — skip and add it later">
+              <Input
+                type="number"
+                min="0"
+                value={guestCount}
+                onChange={(e) => setGuestCount(e.target.value)}
+                placeholder="80"
+              />
+            </Field>
+          </div>
+        )}
+
+        {step === 4 && (
+          <div className="space-y-4">
+            <div>
+              <h1 className="font-display text-2xl font-semibold text-ink">Currency</h1>
+              <p className="mt-1 text-sm text-muted">You can change this any time in Settings.</p>
             </div>
             <Field label="Currency">
               <Select value={currency} onChange={(e) => setCurrency(e.target.value)}>
@@ -180,28 +236,68 @@ export default function OnboardingPage() {
                 ))}
               </Select>
             </Field>
-            <ColorPicker label="Primary colour" value={primaryColour} onChange={setPrimaryColour} />
-            <ColorPicker label="Secondary colour" value={secondaryColour} onChange={setSecondaryColour} />
           </div>
         )}
 
-        {step === 4 && (
+        {step === 5 && (
           <div className="space-y-4">
             <div>
-              <h1 className="font-display text-2xl font-semibold text-ink">Set a budget</h1>
+              <h1 className="font-display text-2xl font-semibold text-ink">What do you want to track?</h1>
               <p className="mt-1 text-sm text-muted">
-                A rough number is fine — this shows on your Dashboard and Budget page and you can change it whenever.
+                Pick the expense categories you want a budget for — you can add, rename or remove these any time.
               </p>
             </div>
-            <Field label="Total wedding budget" hint="Optional — skip and add it later">
-              <Input
-                type="number"
-                min="0"
-                value={totalBudget}
-                onChange={(e) => setTotalBudget(e.target.value)}
-                placeholder="35000"
-              />
-            </Field>
+            <div className="space-y-2">
+              {DEFAULT_EXPENSE_CATEGORIES.map((name) => (
+                <label
+                  key={name}
+                  className={`flex items-center gap-3 rounded-xl border p-3 text-sm font-medium ${
+                    selectedCategories.includes(name) ? "border-primaryStrong bg-primary/10" : "border-line"
+                  }`}
+                >
+                  <input
+                    type="checkbox"
+                    checked={selectedCategories.includes(name)}
+                    onChange={() => toggleCategory(name)}
+                  />
+                  {name}
+                </label>
+              ))}
+            </div>
+            {selectedCategories.length === 0 && (
+              <p className="text-sm text-danger">Pick at least one category to continue.</p>
+            )}
+          </div>
+        )}
+
+        {step === 6 && (
+          <div className="space-y-4">
+            <div>
+              <h1 className="font-display text-2xl font-semibold text-ink">Set a target for each category</h1>
+              <p className="mt-1 text-sm text-muted">
+                Type your own numbers, or auto-fill starting figures based on a rough Australian per-guest average
+                and your guest count{guestCountNumber === 0 && " (enter a guest count on the previous step first)"}.
+              </p>
+            </div>
+            <Button type="button" variant="secondary" onClick={autoFillTargets} disabled={guestCountNumber === 0}>
+              Auto-fill from Australian averages
+            </Button>
+            <div className="space-y-3">
+              {selectedCategories.map((name) => (
+                <Field key={name} label={name}>
+                  <Input
+                    type="number"
+                    min="0"
+                    value={categoryTargets[name] ?? ""}
+                    onChange={(e) => setCategoryTarget(name, e.target.value)}
+                    placeholder="0"
+                  />
+                </Field>
+              ))}
+            </div>
+            <p className="text-sm font-medium text-ink">
+              Total target budget: {formatCurrency(totalTarget, currency)}
+            </p>
           </div>
         )}
 
@@ -217,7 +313,7 @@ export default function OnboardingPage() {
             {submitting
               ? "Setting up…"
               : step < TOTAL_STEPS - 1
-              ? (step === 2 && !location.trim()) || (step === 4 && !totalBudget.trim())
+              ? (step === 2 && !location.trim()) || (step === 3 && !guestCount.trim())
                 ? "Skip"
                 : "Next"
               : "Start planning"}

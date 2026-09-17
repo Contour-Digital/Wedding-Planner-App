@@ -7,7 +7,7 @@ import { useExpenses } from "@/lib/hooks/useExpenses";
 import { useCategories } from "@/lib/hooks/useCategories";
 import { useVendors } from "@/lib/hooks/useVendors";
 import { categoryTotals, weddingTotals } from "@/lib/utils/budget";
-import { formatCurrency } from "@/lib/utils/currency";
+import { formatCurrency, sum } from "@/lib/utils/currency";
 import { StatCard } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { CategorySection } from "@/components/budget/CategorySection";
@@ -36,6 +36,7 @@ export default function BudgetPage() {
 
   const totals = weddingTotals(wedding?.total_budget ?? 0, expenses);
   const byCategory = categoryTotals(categories, expenses);
+  const expectedCosts = sum(byCategory.map((c) => c.targetBudget));
 
   function refresh() {
     refreshExpenses();
@@ -56,7 +57,8 @@ export default function BudgetPage() {
     <div>
       <PageHeader title="Budget" />
       <div className="space-y-6 p-4 sm:p-6">
-        <div className="grid grid-cols-2 gap-3 sm:grid-cols-5">
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-6">
+          <StatCard label="Expected Costs" value={formatCurrency(expectedCosts, wedding?.currency)} />
           <StatCard label="Total Budget" value={formatCurrency(totals.totalBudget, wedding?.currency)} />
           <StatCard label="Committed" value={formatCurrency(totals.committed, wedding?.currency)} />
           <StatCard label="Paid" value={formatCurrency(totals.paid, wedding?.currency)} tone="good" />

@@ -52,6 +52,7 @@ export interface Wedding {
   ceremony_time: string | null;
   venue: string | null;
   location: string | null;
+  guest_count: number | null;
   currency: string;
   primary_colour: string;
   secondary_colour: string;

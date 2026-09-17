@@ -10,9 +10,7 @@
      contrast for white/dark text and fails WCAG AA on its own. */
   --color-primary-strong: #56634f;
   /* Text colour to overlay ON a solid --color-primary fill (buttons, the
-     dashboard countdown card). Dark, since the default sage is light-mid;
-     ThemeProvider recomputes this per-wedding if the couple picks a dark
-     primary colour instead. */
+     dashboard countdown card). Dark, since the sage fill is light-mid. */
   --color-on-primary: #2a2e28;
   --color-secondary: #ffffff;
   --color-surface: #ffffff;
@@ -25,7 +23,7 @@
 
 html,
 body {
-  background-color: #f8faf6;
+  background-color: #ffffff;
   color: var(--color-ink);
 }
 

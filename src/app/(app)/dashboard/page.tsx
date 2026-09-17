@@ -9,8 +9,7 @@ import { useVendors } from "@/lib/hooks/useVendors";
 import { weddingTotals } from "@/lib/utils/budget";
 import { formatCurrency } from "@/lib/utils/currency";
 import { StatCard, Card } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
-import { formatDate, isDueThisMonth, isOverdue, isUpcomingWithin, weddingCountdown } from "@/lib/utils/date";
+import { formatDate, isDueThisMonth, isOverdue, weddingCountdown } from "@/lib/utils/date";
 import { canSeeFinancials } from "@/lib/utils/permissions";
 
 export default function DashboardPage() {
@@ -30,10 +29,9 @@ export default function DashboardPage() {
   const allInstalments = expenses.flatMap((e) =>
     e.instalments.map((i) => ({ ...i, expenseName: e.name }))
   );
-  const upcomingPayments = allInstalments
-    .filter((i) => !i.paid && isUpcomingWithin(i.due_date, 30))
-    .sort((a, b) => (a.due_date ?? "").localeCompare(b.due_date ?? ""));
-  const overduePayments = allInstalments.filter((i) => !i.paid && isOverdue(i.due_date, i.paid));
+  const upcomingInstalments = allInstalments
+    .filter((i) => !i.paid)
+    .sort((a, b) => (a.due_date ?? "9999-99-99").localeCompare(b.due_date ?? "9999-99-99"));
 
   const bookedVendors = vendors.filter((v) => v.status === "booked" || v.status === "completed");
   const countdown = weddingCountdown(wedding?.wedding_date);
@@ -62,6 +60,29 @@ export default function DashboardPage() {
                 tone={totals.outstanding > 0 ? "warn" : "default"}
               />
             </div>
+
+            <div className="mt-4">
+              <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted">Upcoming payments</h3>
+              <div className="space-y-2">
+                {upcomingInstalments.slice(0, 5).map((p) => (
+                  <Card key={p.id} className="flex items-center justify-between">
+                    <div>
+                      <p className="text-sm font-medium">{p.expenseName}</p>
+                      <p className="text-xs text-muted">
+                        {isOverdue(p.due_date, p.paid) ? "Was due" : "Due"} {formatDate(p.due_date)}
+                      </p>
+                    </div>
+                    <p className="font-semibold">{formatCurrency(p.amount, wedding?.currency)}</p>
+                  </Card>
+                ))}
+                {upcomingInstalments.length === 0 && (
+                  <p className="text-sm text-muted">No upcoming payments.</p>
+                )}
+              </div>
+              <Link href="/budget" className="mt-3 inline-block text-sm font-medium text-primaryStrong">
+                View all expenses →
+              </Link>
+            </div>
           </section>
         )}
 
@@ -78,35 +99,6 @@ export default function DashboardPage() {
             <StatCard label="Booked Vendors" value={String(bookedVendors.length)} />
           </div>
         </section>
-
-        {showFinancials && (overduePayments.length > 0 || upcomingPayments.length > 0) && (
-          <section>
-            <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Payments</h2>
-            <div className="space-y-2">
-              {overduePayments.map((p) => (
-                <Card key={p.id} className="flex items-center justify-between border-danger/30">
-                  <div>
-                    <p className="text-sm font-medium">{p.expenseName}</p>
-                    <p className="text-xs text-muted">Was due {formatDate(p.due_date)}</p>
-                  </div>
-                  <div className="text-right">
-                    <p className="font-semibold">{formatCurrency(p.amount, wedding?.currency)}</p>
-                    <Badge className="bg-danger/15 text-danger">Overdue</Badge>
-                  </div>
-                </Card>
-              ))}
-              {upcomingPayments.map((p) => (
-                <Card key={p.id} className="flex items-center justify-between">
-                  <div>
-                    <p className="text-sm font-medium">{p.expenseName}</p>
-                    <p className="text-xs text-muted">Due {formatDate(p.due_date)}</p>
-                  </div>
-                  <p className="font-semibold">{formatCurrency(p.amount, wedding?.currency)}</p>
-                </Card>
-              ))}
-            </div>
-          </section>
-        )}
 
         <section>
           <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Upcoming tasks</h2>

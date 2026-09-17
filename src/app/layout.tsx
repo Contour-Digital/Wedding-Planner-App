@@ -1,7 +1,6 @@
 import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { WeddingProvider } from "@/lib/wedding/WeddingProvider";
-import { ThemeProvider } from "@/lib/theme/ThemeProvider";
 
 export const metadata: Metadata = {
   title: "Wedding Planner",
@@ -28,9 +27,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
   return (
     <html lang="en">
       <body className="font-body min-h-screen antialiased">
-        <WeddingProvider>
-          <ThemeProvider>{children}</ThemeProvider>
-        </WeddingProvider>
+        <WeddingProvider>{children}</WeddingProvider>
       </body>
     </html>
   );

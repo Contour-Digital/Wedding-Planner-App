@@ -9,7 +9,7 @@ export const VENDOR_STATUS_LABEL: Record<VendorStatus, string> = {
   completed: "Completed",
 };
 
-const VENDOR_STATUS_COLOUR: Record<VendorStatus, string> = {
+export const VENDOR_STATUS_COLOUR: Record<VendorStatus, string> = {
   considering: "bg-line text-muted",
   contacted: "bg-blue-100 text-blue-800",
   quote_received: "bg-warn/15 text-warn",

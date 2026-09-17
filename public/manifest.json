@@ -4,7 +4,7 @@
   "description": "Collaborative wedding planning for you and your partner.",
   "start_url": "/dashboard",
   "display": "standalone",
-  "background_color": "#FBF8F5",
+  "background_color": "#FFFFFF",
   "theme_color": "#9CAF98",
   "icons": [
     { "src": "/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },

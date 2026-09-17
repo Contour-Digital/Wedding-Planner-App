@@ -9,9 +9,6 @@ interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
 }
 
 const variantClasses: Record<Variant, string> = {
-  // --color-on-primary is computed per-wedding (ThemeProvider) as whichever
-  // of black/white reads best against the couple's chosen primary colour —
-  // a hardcoded text colour here would break if they picked a dark primary.
   primary: "bg-primary text-onPrimary hover:opacity-90",
   secondary: "bg-line text-ink hover:bg-secondary/60",
   ghost: "bg-transparent text-ink hover:bg-line",

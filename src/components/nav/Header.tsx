@@ -19,7 +19,7 @@ export function Header({ title }: { title: string }) {
   }
 
   return (
-    <header className="no-print sticky top-0 z-30 border-b border-line bg-[#FBF8F5]/90 backdrop-blur">
+    <header className="no-print sticky top-0 z-30 border-b border-line bg-white/90 backdrop-blur">
       <div className="flex items-center justify-between px-4 py-3 sm:px-6">
         <div>
           <h1 className="font-display text-xl font-semibold text-ink">{title}</h1>

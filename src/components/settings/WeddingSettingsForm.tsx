@@ -7,7 +7,6 @@ import { logActivity } from "@/lib/activity/logActivity";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Select } from "@/components/ui/Input";
 import { Card } from "@/components/ui/Card";
-import { ColorPicker } from "@/components/ui/ColorPicker";
 import { CURRENCIES } from "@/lib/constants";
 
 export function WeddingSettingsForm() {
@@ -20,9 +19,8 @@ export function WeddingSettingsForm() {
     ceremony_time: wedding?.ceremony_time ?? "",
     venue: wedding?.venue ?? "",
     location: wedding?.location ?? "",
+    guest_count: wedding?.guest_count != null ? String(wedding.guest_count) : "",
     currency: wedding?.currency ?? "USD",
-    primary_colour: wedding?.primary_colour ?? "#9CAF98",
-    secondary_colour: wedding?.secondary_colour ?? "#FFFFFF",
     total_budget: wedding ? String(wedding.total_budget) : "0",
   });
   const [saving, setSaving] = useState(false);
@@ -41,6 +39,7 @@ export function WeddingSettingsForm() {
 
     const payload = {
       ...form,
+      guest_count: form.guest_count ? Number(form.guest_count) : null,
       total_budget: Number(form.total_budget) || 0,
     };
 
@@ -123,14 +122,19 @@ export function WeddingSettingsForm() {
           <Field label="Location">
             <Input value={form.location ?? ""} onChange={(e) => setForm({ ...form, location: e.target.value })} />
           </Field>
+          <Field label="Guest count" hint="Used to suggest category budgets">
+            <Input
+              type="number"
+              min="0"
+              value={form.guest_count}
+              onChange={(e) => setForm({ ...form, guest_count: e.target.value })}
+            />
+          </Field>
         </div>
       </div>
 
       <div>
-        <h3 className="font-display text-lg font-semibold">Currency & theme</h3>
-        <p className="text-xs text-muted">
-          Primary and secondary colours retheme the whole app live for everyone on this wedding.
-        </p>
+        <h3 className="font-display text-lg font-semibold">Currency</h3>
         <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-3">
           <Field label="Currency">
             <Select value={form.currency} onChange={(e) => setForm({ ...form, currency: e.target.value })}>
@@ -141,16 +145,6 @@ export function WeddingSettingsForm() {
               ))}
             </Select>
           </Field>
-          <ColorPicker
-            label="Primary colour"
-            value={form.primary_colour}
-            onChange={(hex) => setForm({ ...form, primary_colour: hex })}
-          />
-          <ColorPicker
-            label="Secondary colour"
-            value={form.secondary_colour}
-            onChange={(hex) => setForm({ ...form, secondary_colour: hex })}
-          />
         </div>
       </div>
 

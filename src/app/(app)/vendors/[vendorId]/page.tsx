@@ -9,13 +9,14 @@ import { useExpenses } from "@/lib/hooks/useExpenses";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { VendorStatusBadge } from "@/components/vendors/VendorStatusBadge";
+import { VendorStatusPicker } from "@/components/vendors/VendorStatusPicker";
 import { VendorModal } from "@/components/vendors/VendorModal";
 import { ContactManager } from "@/components/vendors/ContactManager";
 import { DocumentManager } from "@/components/vendors/DocumentManager";
 import { PaymentStatusBadge } from "@/components/budget/PaymentStatusBadge";
 import { formatCurrency, sum } from "@/lib/utils/currency";
 import { computeExpenseTotals } from "@/lib/utils/paymentStatus";
-import { canSeeFinancials } from "@/lib/utils/permissions";
+import { canEdit, canSeeFinancials } from "@/lib/utils/permissions";
 
 export default function VendorDetailPage() {
   const { vendorId } = useParams<{ vendorId: string }>();
@@ -25,6 +26,7 @@ export default function VendorDetailPage() {
   const { expenses } = useExpenses(wedding?.id);
   const [editOpen, setEditOpen] = useState(false);
   const showFinancials = canSeeFinancials(role);
+  const editable = canEdit(role);
 
   const vendor = vendors.find((v) => v.id === vendorId);
   if (!vendor) {
@@ -61,12 +63,18 @@ export default function VendorDetailPage() {
                 </a>
               )}
             </div>
-            <VendorStatusBadge status={vendor.status} />
+            {editable ? (
+              <VendorStatusPicker vendor={vendor} onChanged={refresh} />
+            ) : (
+              <VendorStatusBadge status={vendor.status} />
+            )}
           </div>
           {vendor.notes && <p className="mt-3 text-sm text-muted">{vendor.notes}</p>}
-          <Button variant="secondary" className="mt-4" onClick={() => setEditOpen(true)}>
-            Edit vendor
-          </Button>
+          {editable && (
+            <Button variant="secondary" className="mt-4" onClick={() => setEditOpen(true)}>
+              Edit vendor
+            </Button>
+          )}
         </Card>
 
         {showFinancials && (
