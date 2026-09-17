@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 import { useWedding } from "@/lib/wedding/WeddingProvider";
 import { createClient } from "@/lib/supabase/client";
-import { formatDate, weddingCountdown } from "@/lib/utils/date";
+import { weddingCountdown } from "@/lib/utils/date";
 import { MobileMenu } from "./MobileMenu";
 
 export function Header({ title }: { title: string }) {
@@ -27,12 +27,9 @@ export function Header({ title }: { title: string }) {
           vertical padding. */}
       <header className="no-print sticky top-0 z-30 flex h-20 items-center border-b border-line bg-primary">
         <div className="flex w-full items-center justify-between px-4 sm:px-6">
-          {/* Desktop: page title + wedding date. */}
+          {/* Desktop: just the page title. */}
           <div className="hidden sm:block">
             <h1 className="font-display text-xl font-semibold text-onPrimary">{title}</h1>
-            {wedding?.wedding_date && (
-              <p className="text-xs text-onPrimaryMuted">{formatDate(wedding.wedding_date)}</p>
-            )}
           </div>
           {/* Mobile: couple's name + venue instead of the page title — the
               title itself moves into the page below, ahead of its content. */}

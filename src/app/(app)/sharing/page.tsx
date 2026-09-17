@@ -9,6 +9,7 @@ import { logActivity } from "@/lib/activity/logActivity";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Select } from "@/components/ui/Input";
+import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ROLE_DESCRIPTION, ROLE_LABEL, canManageMembers } from "@/lib/utils/permissions";
 import type { WeddingRole } from "@/lib/types/database";
 
@@ -24,8 +25,10 @@ export default function SharingPage() {
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
+  const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
 
   const canManage = canManageMembers(role);
+  const removingMember = members.find((m) => m.id === removingMemberId) ?? null;
 
   async function sendInvite() {
     if (!wedding || !user) {
@@ -82,7 +85,7 @@ export default function SharingPage() {
   }
 
   async function removeMember(memberId: string) {
-    if (!confirm("Remove this person's access?")) return;
+    setRemovingMemberId(null);
     await supabase.from("wedding_members").delete().eq("id", memberId);
     refresh();
   }
@@ -103,7 +106,7 @@ export default function SharingPage() {
         <Card className="space-y-3">
           <h3 className="font-display text-lg font-semibold">Invite someone</h3>
           <p className="text-xs text-muted">
-            We'll email them a sign-in link right away. If they already have an account, they get access
+            We&apos;ll email them a sign-in link right away. If they already have an account, they get access
             immediately instead — no email needed.
           </p>
           <div className="flex flex-col gap-2 sm:flex-row">
@@ -154,7 +157,7 @@ export default function SharingPage() {
                         </option>
                       ))}
                     </Select>
-                    <button onClick={() => removeMember(m.id)} className="text-xs text-danger">
+                    <button onClick={() => setRemovingMemberId(m.id)} className="text-xs text-danger">
                       Remove
                     </button>
                   </div>
@@ -164,6 +167,18 @@ export default function SharingPage() {
           </div>
         </Card>
       </div>
+
+      <ConfirmDialog
+        open={removingMember !== null}
+        title="Remove access"
+        message={
+          removingMember
+            ? `Remove ${removingMember.profile?.full_name ?? removingMember.invited_email ?? "this person"}'s access?`
+            : ""
+        }
+        onConfirm={() => removingMember && removeMember(removingMember.id)}
+        onCancel={() => setRemovingMemberId(null)}
+      />
     </div>
   );
 }

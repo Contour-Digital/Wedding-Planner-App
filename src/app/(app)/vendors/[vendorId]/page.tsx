@@ -130,7 +130,12 @@ export default function VendorDetailPage() {
         )}
 
         <ContactManager vendorId={vendor.id} contacts={vendor.contacts} onChanged={refresh} />
-        <DocumentManager vendorId={vendor.id} documents={vendor.documents} onChanged={refresh} />
+        <DocumentManager
+          weddingId={wedding!.id}
+          vendorId={vendor.id}
+          documents={vendor.documents}
+          onChanged={refresh}
+        />
       </div>
 
       <VendorModal open={editOpen} onClose={() => setEditOpen(false)} vendor={vendor} onSaved={refresh} />
