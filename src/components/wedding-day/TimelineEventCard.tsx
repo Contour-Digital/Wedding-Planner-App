@@ -62,9 +62,9 @@ export function TimelineEventCard({
         </div>
         {event.shared_notes && <p className="mt-2 text-xs text-ink">{event.shared_notes}</p>}
         {canSeePrivate && privateNotes && (
-          {/* A fixed neutral tint rather than bg-secondary — the couple's
-              Secondary colour defaults to white and can be set to anything,
-              so a callout tinted by it could become invisible. */}
+          /* A fixed neutral tint rather than bg-secondary — the couple's
+             Secondary colour defaults to white and can be set to anything,
+             so a callout tinted by it could become invisible. */
           <p className="mt-2 rounded-lg bg-line p-2 text-xs text-ink">
             <span className="font-medium">Couple only: </span>
             {privateNotes}

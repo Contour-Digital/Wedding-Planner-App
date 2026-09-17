@@ -2,6 +2,7 @@ import type { Metadata, Viewport } from "next";
 import "./globals.css";
 import { WeddingProvider } from "@/lib/wedding/WeddingProvider";
 import { ThemeProvider } from "@/lib/theme/ThemeProvider";
+import { Analytics } from "@vercel/analytics/next";
 
 export const metadata: Metadata = {
   title: "Wedding Planner",
@@ -31,6 +32,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <WeddingProvider>
           <ThemeProvider>{children}</ThemeProvider>
         </WeddingProvider>
+        <Analytics />
       </body>
     </html>
   );
