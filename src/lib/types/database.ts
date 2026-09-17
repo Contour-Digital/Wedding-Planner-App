@@ -176,6 +176,24 @@ export interface TimelineEvent {
 // exist on the wire for them at all (see timeline_events_shared view).
 export type TimelineEventShared = Omit<TimelineEvent, "private_notes" | "created_at" | "updated_at">;
 
+export interface InspirationCategory {
+  id: string;
+  wedding_id: string;
+  name: string;
+  sort_order: number;
+  created_at: string;
+}
+
+export interface InspirationPhoto {
+  id: string;
+  wedding_id: string;
+  category_id: string | null;
+  storage_path: string;
+  caption: string | null;
+  uploaded_by: string | null;
+  created_at: string;
+}
+
 export interface ActivityLogEntry {
   id: string;
   wedding_id: string;

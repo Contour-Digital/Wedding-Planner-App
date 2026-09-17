@@ -14,7 +14,7 @@ import { CloseIcon, MenuIcon } from "@/components/ui/icons";
 // "Sign out" button in the mobile header. Desktop keeps its own sign-out
 // button in Header — the Sidebar already shows every section as a full list,
 // so a second menu would be redundant there.
-const MENU_KEYS = ["sharing", "activity", "settings"];
+const MENU_KEYS = ["inspiration", "sharing", "activity", "settings"];
 
 export function MobileMenu() {
   const [open, setOpen] = useState(false);

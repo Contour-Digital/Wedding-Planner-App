@@ -90,6 +90,16 @@ export function SettingsIcon(props: IconProps) {
   );
 }
 
+export function ImageIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <rect x="3.5" y="4.5" width="17" height="15" rx="2" />
+      <circle cx="9" cy="10" r="1.6" />
+      <path d="m5 17 4.5-4.5a1.5 1.5 0 0 1 2.1 0L15 16l1.2-1.2a1.5 1.5 0 0 1 2.1 0L20.5 17" />
+    </svg>
+  );
+}
+
 export function MenuIcon(props: IconProps) {
   return (
     <svg {...base} {...props}>
