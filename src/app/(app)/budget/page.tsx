@@ -24,6 +24,11 @@ export default function BudgetPage() {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<ExpenseWithInstalments | null>(null);
+  // Bumped on every open so ExpenseModal remounts with a fresh key each time —
+  // its form fields are only seeded from `expense` on mount, so without this
+  // reopening it for a different expense (or for "add" after an edit) would
+  // keep showing whatever was loaded the first time the modal ever opened.
+  const [modalKey, setModalKey] = useState(0);
 
   if (!canEdit(role)) {
     return (
@@ -45,11 +50,13 @@ export default function BudgetPage() {
 
   function openAdd() {
     setEditingExpense(null);
+    setModalKey((k) => k + 1);
     setModalOpen(true);
   }
 
   function openEdit(expense: ExpenseWithInstalments) {
     setEditingExpense(expense);
+    setModalKey((k) => k + 1);
     setModalOpen(true);
   }
 
@@ -88,6 +95,7 @@ export default function BudgetPage() {
       </div>
 
       <ExpenseModal
+        key={modalKey}
         open={modalOpen}
         onClose={() => setModalOpen(false)}
         categories={categories}

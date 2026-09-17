@@ -17,11 +17,11 @@ export function Sidebar() {
     <aside className="no-print hidden w-60 shrink-0 flex-col border-r border-line bg-white sm:flex">
       {/* h-20 matches the Header's height exactly, so this block's bottom
           border lines up with the header's bottom border where they meet. */}
-      <div className="flex h-20 flex-col justify-center border-b border-line px-5">
-        <p className="font-display text-lg font-semibold leading-tight">
+      <div className="flex h-20 flex-col justify-center border-b border-line bg-primary px-5">
+        <p className="font-display text-lg font-semibold leading-tight text-onPrimary">
           {wedding ? `${wedding.partner_1} & ${wedding.partner_2}` : "Wedding Planner"}
         </p>
-        {wedding?.venue && <p className="text-xs text-muted">{wedding.venue}</p>}
+        {wedding?.venue && <p className="text-xs text-onPrimaryMuted">{wedding.venue}</p>}
       </div>
       <nav className="flex flex-1 flex-col gap-1 p-3">
         {items.map((item) => {

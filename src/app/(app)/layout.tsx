@@ -4,6 +4,7 @@ import { useRouter } from "next/navigation";
 import { useEffect } from "react";
 import { Sidebar } from "@/components/nav/Sidebar";
 import { BottomNav } from "@/components/nav/BottomNav";
+import { SwipeNav } from "@/components/nav/SwipeNav";
 import { useWedding } from "@/lib/wedding/WeddingProvider";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -30,7 +31,9 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   return (
     <div className="flex min-h-screen">
       <Sidebar />
-      <main className="flex-1 pb-20 sm:pb-0">{children}</main>
+      <main className="flex-1 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:pb-0">
+        <SwipeNav>{children}</SwipeNav>
+      </main>
       <BottomNav />
     </div>
   );
