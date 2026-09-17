@@ -26,15 +26,52 @@ export default function SharingPage() {
   const [notice, setNotice] = useState<string | null>(null);
   const [sending, setSending] = useState(false);
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
+  const [resendingMemberId, setResendingMemberId] = useState<string | null>(null);
+  const [resendStatus, setResendStatus] = useState<{ memberId: string; message: string; isError: boolean } | null>(
+    null
+  );
 
   const canManage = canManageMembers(role);
   const removingMember = members.find((m) => m.id === removingMemberId) ?? null;
 
-  async function sendInvite() {
+  // Shared by the "Invite someone" form and each pending row's "Resend
+  // invite" button — same request, same success/error messages either way.
+  async function requestInvite(targetEmail: string, targetRole: WeddingRole) {
     if (!wedding || !user) {
-      setError("Still loading your wedding — try again in a moment.");
-      return;
+      return { ok: false, isError: true, message: "Still loading your wedding — try again in a moment." };
     }
+    let result: { ok?: boolean; emailSent?: boolean; error?: string };
+    try {
+      const res = await fetch("/api/invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ weddingId: wedding.id, email: targetEmail, role: targetRole }),
+      });
+      result = await res.json();
+      if (!res.ok) {
+        return { ok: false, isError: true, message: result.error ?? "Couldn't send that invite — please try again." };
+      }
+    } catch {
+      return { ok: false, isError: true, message: "Couldn't reach the server — check your connection and try again." };
+    }
+
+    await logActivity(supabase, {
+      weddingId: wedding.id,
+      userId: user.id,
+      actionType: "member.invited",
+      description: `Invited ${targetEmail} as ${ROLE_LABEL[targetRole]}.`,
+      entityType: "wedding_member",
+    });
+    return {
+      ok: true,
+      isError: false,
+      message: result.emailSent
+        ? `Invite email sent to ${targetEmail}.`
+        : `${targetEmail} already has an account — they now have access, no email needed.`,
+    };
+  }
+
+  async function sendInvite() {
     if (!email.trim()) {
       setError("Enter an email address.");
       return;
@@ -43,40 +80,24 @@ export default function SharingPage() {
     setError(null);
     setNotice(null);
 
-    let result: { ok?: boolean; emailSent?: boolean; error?: string };
-    try {
-      const res = await fetch("/api/invite", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ weddingId: wedding.id, email: email.trim(), role: inviteRole }),
-      });
-      result = await res.json();
-      if (!res.ok) {
-        setError(result.error ?? "Couldn't send that invite — please try again.");
-        setSending(false);
-        return;
-      }
-    } catch {
-      setError("Couldn't reach the server — check your connection and try again.");
-      setSending(false);
-      return;
+    const result = await requestInvite(email.trim(), inviteRole);
+    if (result.isError) {
+      setError(result.message);
+    } else {
+      setNotice(result.message);
+      setEmail("");
+      refresh();
     }
-
-    await logActivity(supabase, {
-      weddingId: wedding.id,
-      userId: user.id,
-      actionType: "member.invited",
-      description: `Invited ${email.trim()} as ${ROLE_LABEL[inviteRole]}.`,
-      entityType: "wedding_member",
-    });
-    setNotice(
-      result.emailSent
-        ? `Invite email sent to ${email.trim()}.`
-        : `${email.trim()} already has an account — they now have access, no email needed.`
-    );
-    setEmail("");
-    refresh();
     setSending(false);
+  }
+
+  async function resendInvite(memberId: string, targetEmail: string, targetRole: WeddingRole) {
+    setResendingMemberId(memberId);
+    setResendStatus(null);
+    const result = await requestInvite(targetEmail, targetRole);
+    setResendStatus({ memberId, message: result.message, isError: result.isError });
+    if (result.ok) refresh();
+    setResendingMemberId(null);
   }
 
   async function updateRole(memberId: string, newRole: WeddingRole) {
@@ -134,36 +155,63 @@ export default function SharingPage() {
         <Card className="space-y-3">
           <h3 className="font-display text-lg font-semibold">People with access</h3>
           <div className="space-y-2">
-            {members.map((m) => (
-              <div key={m.id} className="flex items-center justify-between gap-2 rounded-xl border border-line p-3">
-                <div>
-                  <p className="text-sm font-medium">
-                    {m.profile?.full_name ?? m.invited_email ?? "Pending invite"}
-                  </p>
-                  <p className="text-xs text-muted">{m.profile?.email ?? m.invited_email}</p>
-                </div>
-                {m.role === "owner" ? (
-                  <span className="text-xs font-medium text-muted">{ROLE_LABEL.owner}</span>
-                ) : (
-                  <div className="flex items-center gap-2">
-                    <Select
-                      value={m.role}
-                      onChange={(e) => updateRole(m.id, e.target.value as WeddingRole)}
-                      className="w-auto"
-                    >
-                      {INVITABLE_ROLES.map((r) => (
-                        <option key={r} value={r}>
-                          {ROLE_LABEL[r]}
-                        </option>
-                      ))}
-                    </Select>
-                    <button onClick={() => setRemovingMemberId(m.id)} className="text-xs text-danger">
-                      Remove
-                    </button>
+            {members.map((m) => {
+              // A row is still pending — nobody has claimed it by signing up
+              // yet — exactly when it has no user_id. handle_new_user()
+              // clears invited_email and sets user_id together the moment
+              // the invitee's account is created, so the two are never both
+              // set at once; m.invited_email is guaranteed present here.
+              const pending = m.user_id === null && m.invited_email;
+              return (
+                <div key={m.id} className="rounded-xl border border-line p-3">
+                  <div className="flex items-center justify-between gap-2">
+                    <div>
+                      <p className="text-sm font-medium">
+                        {m.profile?.full_name ?? m.invited_email ?? "Pending invite"}
+                      </p>
+                      <p className="text-xs text-muted">
+                        {m.profile?.email ?? m.invited_email}
+                        {pending ? " · pending" : ""}
+                      </p>
+                    </div>
+                    {m.role === "owner" ? (
+                      <span className="text-xs font-medium text-muted">{ROLE_LABEL.owner}</span>
+                    ) : (
+                      <div className="flex items-center gap-2">
+                        <Select
+                          value={m.role}
+                          onChange={(e) => updateRole(m.id, e.target.value as WeddingRole)}
+                          className="w-auto"
+                        >
+                          {INVITABLE_ROLES.map((r) => (
+                            <option key={r} value={r}>
+                              {ROLE_LABEL[r]}
+                            </option>
+                          ))}
+                        </Select>
+                        {pending && (
+                          <button
+                            onClick={() => resendInvite(m.id, m.invited_email as string, m.role)}
+                            disabled={resendingMemberId === m.id}
+                            className="whitespace-nowrap text-xs font-medium text-primaryStrong disabled:opacity-50"
+                          >
+                            {resendingMemberId === m.id ? "Resending…" : "Resend invite"}
+                          </button>
+                        )}
+                        <button onClick={() => setRemovingMemberId(m.id)} className="text-xs text-danger">
+                          Remove
+                        </button>
+                      </div>
+                    )}
                   </div>
-                )}
-              </div>
-            ))}
+                  {resendStatus?.memberId === m.id && (
+                    <p className={`mt-2 text-xs ${resendStatus.isError ? "text-danger" : "text-good"}`}>
+                      {resendStatus.message}
+                    </p>
+                  )}
+                </div>
+              );
+            })}
           </div>
         </Card>
       </div>

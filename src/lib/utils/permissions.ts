@@ -41,8 +41,18 @@ export function visibleNavSections(role: WeddingRole | null | undefined): string
     return ["wedding-day"];
   }
   if (role === "viewer") {
-    return ["dashboard", "tasks", "vendors", "wedding-day", "activity"];
+    return ["dashboard", "tasks", "vendors", "wedding-day", "inspiration", "activity"];
   }
   // owner / editor
-  return ["dashboard", "tasks", "budget", "vendors", "wedding-day", "sharing", "activity", "settings"];
+  return [
+    "dashboard",
+    "tasks",
+    "budget",
+    "vendors",
+    "wedding-day",
+    "inspiration",
+    "sharing",
+    "activity",
+    "settings",
+  ];
 }

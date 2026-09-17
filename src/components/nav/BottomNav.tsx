@@ -7,11 +7,12 @@ import { ALL_NAV_ITEMS, PRIMARY_NAV_KEYS } from "./NavItems";
 import { useWedding } from "@/lib/wedding/WeddingProvider";
 import { visibleNavSections } from "@/lib/utils/permissions";
 
-// Mobile-first bottom tab bar. Always the same 5 primary sections — Sharing,
-// Activity and Settings live in the hamburger menu (MobileMenu) instead, so
-// this bar never gets cramped and stays a fixed, memorable layout. A role
-// that can't see one of these (e.g. Timeline Only only gets Wedding Day)
-// simply gets fewer tabs rather than substituting something else in.
+// Mobile-first bottom tab bar. Always the same 5 primary sections — Vendors,
+// Sharing, Activity and Settings live in the hamburger menu (MobileMenu)
+// instead, so this bar never gets cramped and stays a fixed, memorable
+// layout. A role that can't see one of these (e.g. Timeline Only only gets
+// Wedding Day) simply gets fewer tabs rather than substituting something
+// else in.
 export function BottomNav() {
   const pathname = usePathname();
   const { role } = useWedding();
