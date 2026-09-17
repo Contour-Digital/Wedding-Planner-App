@@ -28,10 +28,27 @@ set user_id = null
 where wm.user_id is not null
   and not exists (select 1 from public.profiles p where p.id = wm.user_id);
 
-alter table public.wedding_members
-  add constraint wedding_members_wedding_id_fkey
-  foreign key (wedding_id) references public.weddings (id) on delete cascade;
+-- Postgres has no ADD CONSTRAINT IF NOT EXISTS (only indexes get that),
+-- so each is guarded explicitly — safe to run this file again even if a
+-- previous attempt already got partway through.
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'wedding_members_wedding_id_fkey'
+  ) then
+    alter table public.wedding_members
+      add constraint wedding_members_wedding_id_fkey
+      foreign key (wedding_id) references public.weddings (id) on delete cascade;
+  end if;
+end $$;
 
-alter table public.wedding_members
-  add constraint wedding_members_user_id_fkey
-  foreign key (user_id) references public.profiles (id) on delete set null;
+do $$
+begin
+  if not exists (
+    select 1 from pg_constraint where conname = 'wedding_members_user_id_fkey'
+  ) then
+    alter table public.wedding_members
+      add constraint wedding_members_user_id_fkey
+      foreign key (user_id) references public.profiles (id) on delete set null;
+  end if;
+end $$;
