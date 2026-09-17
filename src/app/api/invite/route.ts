@@ -177,9 +177,14 @@ export async function POST(request: Request) {
     ? await memberLookup.eq("user_id", invitedUserId).maybeSingle()
     : await memberLookup.eq("invited_email", email).maybeSingle();
 
-  const memberPayload = invitedUserId
-    ? { wedding_id: weddingId, user_id: invitedUserId, invited_email: null, role }
-    : { wedding_id: weddingId, invited_email: email, role };
+  // Both branches list the exact same keys (user_id/invited_email always
+  // present, just one is null) — a union where one branch omitted a key
+  // previously tripped up Supabase's insert() typing (RejectExcessProperties
+  // couldn't reconcile the two differently-shaped object types).
+  const memberPayload: { wedding_id: string; user_id: string | null; invited_email: string | null; role: string } =
+    invitedUserId
+      ? { wedding_id: weddingId, user_id: invitedUserId, invited_email: null, role }
+      : { wedding_id: weddingId, user_id: null, invited_email: email, role };
 
   const { error: dbError } = existingMember
     ? await admin.from("wedding_members").update(memberPayload).eq("id", existingMember.id)
