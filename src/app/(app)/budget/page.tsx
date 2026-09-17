@@ -12,6 +12,7 @@ import { StatCard } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { CategorySection } from "@/components/budget/CategorySection";
 import { ExpenseModal } from "@/components/budget/ExpenseModal";
+import { BudgetBreakdownChart } from "@/components/budget/BudgetBreakdownChart";
 import { canEdit } from "@/lib/utils/permissions";
 import type { ExpenseWithInstalments } from "@/lib/types/domain";
 
@@ -78,6 +79,8 @@ export default function BudgetPage() {
         </div>
 
         <Button onClick={openAdd}>+ Add expense</Button>
+
+        <BudgetBreakdownChart categories={byCategory} currency={wedding?.currency} />
 
         <div className="space-y-8">
           {byCategory.map((cat) => (
