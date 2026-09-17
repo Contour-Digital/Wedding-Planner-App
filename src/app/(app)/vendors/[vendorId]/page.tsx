@@ -6,6 +6,7 @@ import { PageHeader } from "@/components/nav/PageHeader";
 import { useWedding } from "@/lib/wedding/WeddingProvider";
 import { useVendors } from "@/lib/hooks/useVendors";
 import { useExpenses } from "@/lib/hooks/useExpenses";
+import { useCategories } from "@/lib/hooks/useCategories";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { VendorStatusBadge } from "@/components/vendors/VendorStatusBadge";
@@ -14,19 +15,34 @@ import { VendorModal } from "@/components/vendors/VendorModal";
 import { ContactManager } from "@/components/vendors/ContactManager";
 import { DocumentManager } from "@/components/vendors/DocumentManager";
 import { PaymentStatusBadge } from "@/components/budget/PaymentStatusBadge";
+import { ExpenseModal } from "@/components/budget/ExpenseModal";
 import { formatCurrency, sum } from "@/lib/utils/currency";
 import { computeExpenseTotals } from "@/lib/utils/paymentStatus";
 import { canEdit, canSeeFinancials } from "@/lib/utils/permissions";
+import type { ExpenseWithInstalments } from "@/lib/types/domain";
 
 export default function VendorDetailPage() {
   const { vendorId } = useParams<{ vendorId: string }>();
   const router = useRouter();
   const { wedding, role } = useWedding();
   const { vendors, refresh } = useVendors(wedding?.id);
-  const { expenses } = useExpenses(wedding?.id);
+  const { expenses, refresh: refreshExpenses } = useExpenses(wedding?.id);
+  const { categories } = useCategories(wedding?.id);
   const [editOpen, setEditOpen] = useState(false);
+  const [editingExpense, setEditingExpense] = useState<ExpenseWithInstalments | null>(null);
+  const [expenseModalOpen, setExpenseModalOpen] = useState(false);
+  // Bumped on every open so ExpenseModal (whose fields only seed from
+  // `expense` on mount) remounts fresh instead of showing whichever
+  // expense's data happened to be loaded first.
+  const [expenseModalKey, setExpenseModalKey] = useState(0);
   const showFinancials = canSeeFinancials(role);
   const editable = canEdit(role);
+
+  function openEditExpense(exp: ExpenseWithInstalments) {
+    setEditingExpense(exp);
+    setExpenseModalKey((k) => k + 1);
+    setExpenseModalOpen(true);
+  }
 
   const vendor = vendors.find((v) => v.id === vendorId);
   if (!vendor) {
@@ -93,9 +109,17 @@ export default function VendorDetailPage() {
                 return (
                   <div key={e.id} className="flex items-center justify-between rounded-xl border border-line p-3">
                     <p className="text-sm font-medium">{e.name}</p>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-3">
                       <span className="text-sm">{formatCurrency(e.total_amount, wedding?.currency)}</span>
                       <PaymentStatusBadge status={t.status} />
+                      {editable && (
+                        <button
+                          onClick={() => openEditExpense(e)}
+                          className="text-xs font-medium text-primaryStrong"
+                        >
+                          Edit
+                        </button>
+                      )}
                     </div>
                   </div>
                 );
@@ -110,6 +134,17 @@ export default function VendorDetailPage() {
       </div>
 
       <VendorModal open={editOpen} onClose={() => setEditOpen(false)} vendor={vendor} onSaved={refresh} />
+      {editable && (
+        <ExpenseModal
+          key={expenseModalKey}
+          open={expenseModalOpen}
+          onClose={() => setExpenseModalOpen(false)}
+          categories={categories}
+          vendors={vendors}
+          expense={editingExpense}
+          onSaved={refreshExpenses}
+        />
+      )}
     </div>
   );
 }
