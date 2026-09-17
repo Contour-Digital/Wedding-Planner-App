@@ -103,7 +103,7 @@ export default function SharingPage() {
         <Card className="space-y-3">
           <h3 className="font-display text-lg font-semibold">Invite someone</h3>
           <p className="text-xs text-muted">
-            We'll email them a sign-in link right away. If they already have an account, they get access
+            We&apos;ll email them a sign-in link right away. If they already have an account, they get access
             immediately instead — no email needed.
           </p>
           <div className="flex flex-col gap-2 sm:flex-row">

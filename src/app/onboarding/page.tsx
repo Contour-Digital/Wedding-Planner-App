@@ -221,7 +221,7 @@ export default function OnboardingPage() {
             <div>
               <h1 className="font-display text-2xl font-semibold text-ink">How many guests?</h1>
               <p className="mt-1 text-sm text-muted">
-                A rough number is fine — it's used to suggest starting budgets for each category next.
+                A rough number is fine — it&apos;s used to suggest starting budgets for each category next.
               </p>
             </div>
             <Field label="Guest count" hint="Optional — skip and add it later">
