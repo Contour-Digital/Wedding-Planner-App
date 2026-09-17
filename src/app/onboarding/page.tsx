@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useWedding } from "@/lib/wedding/WeddingProvider";
@@ -21,6 +21,21 @@ const STEP_LABELS = [
 ];
 const TOTAL_STEPS = STEP_LABELS.length;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+const ONBOARDING_DRAFT_KEY = "wedding-planner:onboarding-draft";
+
+interface OnboardingDraft {
+  step: number;
+  partner1Name: string;
+  partner2Name: string;
+  partner2Email: string;
+  jointEmail: string;
+  weddingDate: string;
+  location: string;
+  guestCount: string;
+  currency: string;
+  selectedCategories: string[];
+  categoryTargets: Record<string, string>;
+}
 
 // Short steps rather than one long form — each screen asks one thing, so it
 // reads fine on a phone and nobody has to scroll a wall of fields before
@@ -50,6 +65,70 @@ export default function OnboardingPage() {
   const [currency, setCurrency] = useState("USD");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([...DEFAULT_EXPENSE_CATEGORIES]);
   const [categoryTargets, setCategoryTargets] = useState<Record<string, string>>({});
+
+  // Restore a draft left behind by an accidentally-closed tab, once on
+  // mount. Wrapped in try/catch per this app's existing convention for
+  // storage access (see InstallPrompt.tsx) — private browsing / blocked
+  // storage / a corrupted draft should never break the wizard, just leave
+  // it starting fresh.
+  useEffect(() => {
+    try {
+      const raw = window.localStorage.getItem(ONBOARDING_DRAFT_KEY);
+      if (!raw) return;
+      const draft = JSON.parse(raw) as Partial<OnboardingDraft>;
+      if (typeof draft.step === "number") setStep(draft.step);
+      if (typeof draft.partner1Name === "string") setPartner1Name(draft.partner1Name);
+      if (typeof draft.partner2Name === "string") setPartner2Name(draft.partner2Name);
+      if (typeof draft.partner2Email === "string") setPartner2Email(draft.partner2Email);
+      if (typeof draft.jointEmail === "string") setJointEmail(draft.jointEmail);
+      if (typeof draft.weddingDate === "string") setWeddingDate(draft.weddingDate);
+      if (typeof draft.location === "string") setLocation(draft.location);
+      if (typeof draft.guestCount === "string") setGuestCount(draft.guestCount);
+      if (typeof draft.currency === "string") setCurrency(draft.currency);
+      if (Array.isArray(draft.selectedCategories)) setSelectedCategories(draft.selectedCategories);
+      if (draft.categoryTargets && typeof draft.categoryTargets === "object") {
+        setCategoryTargets(draft.categoryTargets);
+      }
+    } catch {
+      // Ignore — proceed as if there was no draft.
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  // Persist on every change, so closing the tab mid-wizard only costs
+  // whatever wasn't typed yet.
+  useEffect(() => {
+    try {
+      const draft: OnboardingDraft = {
+        step,
+        partner1Name,
+        partner2Name,
+        partner2Email,
+        jointEmail,
+        weddingDate,
+        location,
+        guestCount,
+        currency,
+        selectedCategories,
+        categoryTargets,
+      };
+      window.localStorage.setItem(ONBOARDING_DRAFT_KEY, JSON.stringify(draft));
+    } catch {
+      // Ignore — worst case, progress isn't saved this time.
+    }
+  }, [
+    step,
+    partner1Name,
+    partner2Name,
+    partner2Email,
+    jointEmail,
+    weddingDate,
+    location,
+    guestCount,
+    currency,
+    selectedCategories,
+    categoryTargets,
+  ]);
 
   const emailValid = partner2Email.trim() === "" || EMAIL_RE.test(partner2Email.trim());
   const jointEmailValid = jointEmail.trim() === "" || EMAIL_RE.test(jointEmail.trim());
@@ -130,6 +209,11 @@ export default function OnboardingPage() {
     if (error) {
       setError(error.message);
       return;
+    }
+    try {
+      window.localStorage.removeItem(ONBOARDING_DRAFT_KEY);
+    } catch {
+      // Ignore — non-critical cleanup.
     }
     router.replace("/dashboard");
     router.refresh();
