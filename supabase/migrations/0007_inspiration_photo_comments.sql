@@ -23,6 +23,11 @@ create index if not exists inspiration_photo_comments_photo_id_idx
 
 alter table inspiration_photo_comments enable row level security;
 
+-- Each CREATE POLICY is preceded by DROP POLICY IF EXISTS — Postgres has
+-- no CREATE POLICY IF NOT EXISTS, so this stays safe to re-run if a prior
+-- attempt only got partway through (see 0006 for the same fix, applied
+-- after hitting exactly this on that file).
+drop policy if exists "inspiration_photo_comments: select by wedding members" on inspiration_photo_comments;
 create policy "inspiration_photo_comments: select by wedding members"
 on inspiration_photo_comments for select
 to authenticated
@@ -37,6 +42,7 @@ using (
   )
 );
 
+drop policy if exists "inspiration_photo_comments: insert by editors" on inspiration_photo_comments;
 create policy "inspiration_photo_comments: insert by editors"
 on inspiration_photo_comments for insert
 to authenticated
@@ -51,6 +57,7 @@ with check (
   )
 );
 
+drop policy if exists "inspiration_photo_comments: delete by editors" on inspiration_photo_comments;
 create policy "inspiration_photo_comments: delete by editors"
 on inspiration_photo_comments for delete
 to authenticated
