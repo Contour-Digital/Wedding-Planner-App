@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { PageHeader } from "@/components/nav/PageHeader";
 import { useWedding } from "@/lib/wedding/WeddingProvider";
 import { useExpenses } from "@/lib/hooks/useExpenses";
@@ -103,11 +104,17 @@ export default function BudgetPage() {
           />
         </div>
 
-        <div className="flex flex-wrap gap-2">
+        <div className="flex flex-wrap items-center gap-2">
           <Button onClick={openAdd}>+ Add expense</Button>
           <Button variant="secondary" onClick={exportCsv} disabled={expenses.length === 0}>
             Export CSV
           </Button>
+          <Link
+            href="/budget/upcoming"
+            className="inline-flex items-center rounded-full border border-line px-3 py-1.5 text-xs font-medium text-primaryStrong hover:bg-line"
+          >
+            Upcoming payments
+          </Link>
         </div>
 
         <BudgetBreakdownChart categories={byCategory} currency={wedding?.currency} />

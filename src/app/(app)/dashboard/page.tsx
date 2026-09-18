@@ -68,7 +68,7 @@ export default function DashboardPage() {
             <div className="mt-4">
               <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted">Upcoming payments</h3>
               <div className="space-y-2">
-                {upcomingInstalments.slice(0, 5).map((p) => (
+                {upcomingInstalments.slice(0, 2).map((p) => (
                   <Card key={p.id} className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium">{p.expenseName}</p>
@@ -83,8 +83,8 @@ export default function DashboardPage() {
                   <p className="text-sm text-muted">No upcoming payments.</p>
                 )}
               </div>
-              <Link href="/budget" className="mt-3 inline-block text-sm font-medium text-primaryStrong">
-                View all expenses →
+              <Link href="/budget/upcoming" className="mt-3 inline-block text-sm font-medium text-primaryStrong">
+                View all upcoming payments →
               </Link>
             </div>
           </section>
