@@ -9,6 +9,7 @@ import { Field, Input, Select } from "@/components/ui/Input";
 import { CURRENCIES } from "@/lib/constants";
 import { DEFAULT_EXPENSE_CATEGORIES, estimateCategoryBudget } from "@/lib/utils/categoryEstimates";
 import { formatCurrency } from "@/lib/utils/currency";
+import { copyToClipboard } from "@/lib/utils/clipboard";
 
 const STEP_LABELS = [
   "You & your partner",
@@ -52,6 +53,7 @@ export default function OnboardingPage() {
   const [step, setStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
+  const [partnerInviteLink, setPartnerInviteLink] = useState<string | null>(null);
 
   const [partner1Name, setPartner1Name] = useState(
     (user?.user_metadata?.full_name as string | undefined) ?? ""
@@ -205,8 +207,8 @@ export default function OnboardingPage() {
       p_joint_email: jointEmail.trim() || null,
     });
 
-    setSubmitting(false);
     if (error) {
+      setSubmitting(false);
       setError(error.message);
       return;
     }
@@ -215,8 +217,75 @@ export default function OnboardingPage() {
     } catch {
       // Ignore — non-critical cleanup.
     }
+
+    // create_wedding_for_current_user() creates a pending wedding_members
+    // row for the partner's email (same shape as an invite from Sharing —
+    // invited_email set, user_id null) but has no way to hand back a link
+    // itself, so it's looked up here the same way Sharing's "Copy invite
+    // link" does: the row's own id is the link. Skipped entirely if no
+    // partner email was given.
+    if (partner2Email.trim()) {
+      const { data: ownerRow } = await supabase
+        .from("wedding_members")
+        .select("wedding_id")
+        .eq("user_id", currentUser.id)
+        .eq("role", "owner")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      const { data: partnerRow } = ownerRow
+        ? await supabase
+            .from("wedding_members")
+            .select("id")
+            .eq("wedding_id", ownerRow.wedding_id)
+            .ilike("invited_email", partner2Email.trim())
+            .maybeSingle()
+        : { data: null };
+
+      if (partnerRow) {
+        setSubmitting(false);
+        const link = `${window.location.origin}/invite/${partnerRow.id}`;
+        setPartnerInviteLink(link);
+        await copyToClipboard(link);
+        return;
+      }
+    }
+
+    setSubmitting(false);
     router.replace("/dashboard");
     router.refresh();
+  }
+
+  if (partnerInviteLink) {
+    return (
+      <div className="flex min-h-screen items-center justify-center bg-white px-4 py-10">
+        <div className="w-full max-w-sm space-y-6 text-center">
+          <div>
+            <h1 className="font-display text-2xl font-semibold text-ink">You&apos;re all set! 🎉</h1>
+            <p className="mt-1 text-sm text-muted">
+              Share this link with {partner2Name.trim() || "your partner"} to give them full access — it&apos;s
+              already copied to your clipboard.
+            </p>
+          </div>
+          <div className="flex flex-col gap-2 sm:flex-row">
+            <Input readOnly value={partnerInviteLink} onFocus={(e) => e.target.select()} />
+            <Button variant="secondary" onClick={() => copyToClipboard(partnerInviteLink)}>
+              Copy
+            </Button>
+          </div>
+          <Button
+            fullWidth
+            onClick={() => {
+              router.replace("/dashboard");
+              router.refresh();
+            }}
+          >
+            Continue to dashboard
+          </Button>
+        </div>
+      </div>
+    );
   }
 
   return (
@@ -241,7 +310,7 @@ export default function OnboardingPage() {
             <div>
               <h1 className="font-display text-2xl font-semibold text-ink">You &amp; your partner</h1>
               <p className="mt-1 text-sm text-muted">
-                Invite your partner now with full access, or skip the email and add them later from Sharing.
+                Invite your partner now with full access, or skip this and add them later from Sharing.
               </p>
             </div>
             <Field label="Your name">
@@ -250,7 +319,10 @@ export default function OnboardingPage() {
             <Field label="Partner's name">
               <Input value={partner2Name} onChange={(e) => setPartner2Name(e.target.value)} placeholder="Chloe" />
             </Field>
-            <Field label="Partner's email" hint="Optional — invites them with full access as soon as you finish">
+            <Field
+              label="Partner's email"
+              hint="Optional — gives you a link to share with them, with full access, as soon as you finish"
+            >
               <Input
                 type="email"
                 value={partner2Email}
