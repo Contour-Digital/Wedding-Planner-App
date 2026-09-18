@@ -15,5 +15,9 @@ drop trigger if exists on_ceremony_time_change on weddings;
 drop trigger if exists sync_ceremony_time on weddings;
 drop function if exists public.sync_ceremony_time();
 
+-- Same mismatch as above: the live trigger calling this function is
+-- actually named protect_ceremony_start_time_trg, not
+-- protect_ceremony_start_time.
+drop trigger if exists protect_ceremony_start_time_trg on timeline_events;
 drop trigger if exists protect_ceremony_start_time on timeline_events;
 drop function if exists public.protect_ceremony_start_time();
