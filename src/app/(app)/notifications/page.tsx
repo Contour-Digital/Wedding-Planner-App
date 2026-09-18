@@ -7,17 +7,45 @@ import { useNotificationPreferences, type PreferenceKey } from "@/lib/hooks/useN
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { pushSupported, getPushSubscription, subscribeToPush, unsubscribeFromPush } from "@/lib/push/subscribe";
+import { canSeeFinancials, canSeeVendorsAndTasks } from "@/lib/utils/permissions";
+import type { WeddingRole } from "@/lib/types/database";
 
-const CATEGORIES: { key: PreferenceKey; label: string; hint: string }[] = [
-  { key: "payment_due", label: "Payment due reminders", hint: "When a bill or instalment is coming up" },
-  { key: "task_assigned", label: "Task assigned to me", hint: "When someone assigns you a task" },
-  { key: "task_due", label: "Task due soon", hint: "When one of your tasks is due or overdue" },
-  { key: "member_joined", label: "New member joins", hint: "When someone you invited accepts and signs in" },
+// Only shown to a role that could ever actually receive the category —
+// e.g. payment_due only ever goes to owner/editor (see
+// payment-reminders' recipient query), and member_joined only ever goes to
+// the wedding owner (see /api/notify/member-joined) — so anyone else's
+// toggle would just be dead UI.
+const CATEGORIES: { key: PreferenceKey; label: string; hint: string; relevantTo: (role: WeddingRole | null | undefined) => boolean }[] = [
+  {
+    key: "payment_due",
+    label: "Payment due reminders",
+    hint: "When a bill or instalment is coming up",
+    relevantTo: canSeeFinancials,
+  },
+  {
+    key: "task_assigned",
+    label: "Task assigned to me",
+    hint: "When someone assigns you a task",
+    relevantTo: canSeeVendorsAndTasks,
+  },
+  {
+    key: "task_due",
+    label: "Task due soon",
+    hint: "When one of your tasks is due or overdue",
+    relevantTo: canSeeVendorsAndTasks,
+  },
+  {
+    key: "member_joined",
+    label: "New member joins",
+    hint: "When someone you invited accepts and signs in",
+    relevantTo: (role) => role === "owner",
+  },
 ];
 
 export default function NotificationsPage() {
-  const { user, wedding } = useWedding();
+  const { user, wedding, role } = useWedding();
   const { preferences, setPreference } = useNotificationPreferences(user?.id, wedding?.id);
+  const categories = CATEGORIES.filter((c) => c.relevantTo(role));
 
   const [supported, setSupported] = useState(true);
   const [denied, setDenied] = useState(false);
@@ -96,22 +124,26 @@ export default function NotificationsPage() {
             <h3 className="font-display text-lg font-semibold">What to notify me about</h3>
             <p className="mt-1 text-xs text-muted">Applies whenever notifications are on for a device.</p>
           </div>
-          <div className="space-y-3">
-            {CATEGORIES.map((category) => (
-              <label key={category.key} className="flex items-center justify-between gap-4">
-                <span>
-                  <span className="block text-sm font-medium">{category.label}</span>
-                  <span className="block text-xs text-muted">{category.hint}</span>
-                </span>
-                <input
-                  type="checkbox"
-                  className="h-5 w-5 shrink-0"
-                  checked={preferences[category.key]}
-                  onChange={(e) => setPreference(category.key, e.target.checked)}
-                />
-              </label>
-            ))}
-          </div>
+          {categories.length === 0 ? (
+            <p className="text-sm text-muted">No notification types apply to your role yet.</p>
+          ) : (
+            <div className="space-y-3">
+              {categories.map((category) => (
+                <label key={category.key} className="flex items-center justify-between gap-4">
+                  <span>
+                    <span className="block text-sm font-medium">{category.label}</span>
+                    <span className="block text-xs text-muted">{category.hint}</span>
+                  </span>
+                  <input
+                    type="checkbox"
+                    className="h-5 w-5 shrink-0"
+                    checked={preferences[category.key]}
+                    onChange={(e) => setPreference(category.key, e.target.checked)}
+                  />
+                </label>
+              ))}
+            </div>
+          )}
         </Card>
       </div>
     </div>
