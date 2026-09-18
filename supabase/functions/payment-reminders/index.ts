@@ -8,7 +8,10 @@
 // joint_email/partner_1_email/partner_2_email, wherever set) via Resend —
 // same provider and HTML-email pattern as src/app/api/invite/route.ts — and
 // stamps last_reminder_sent_at on each one it successfully sends, so a
-// re-run today is a no-op for it.
+// re-run today is a no-op for it. Also sends a push notification (see
+// ../_shared/push.ts) to every owner/editor member with a linked account
+// and the "payment_due" category on — a separate, best-effort channel from
+// email, so its own failures never affect the tracking above.
 //
 // Deploy: supabase functions deploy payment-reminders
 // Secrets: supabase secrets set RESEND_API_KEY=... [RESEND_FROM_EMAIL=...]
@@ -17,6 +20,7 @@
 // Schedule: see README.md in this folder — needs a manual step in the
 // Supabase dashboard (pg_cron isn't enabled by default).
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.45.4";
+import { sendPushToUser } from "../_shared/push.ts";
 
 const RESEND_API_KEY = Deno.env.get("RESEND_API_KEY");
 const RESEND_FROM_EMAIL = Deno.env.get("RESEND_FROM_EMAIL") || "Wedding Planner <onboarding@resend.dev>";
@@ -118,6 +122,31 @@ Deno.serve(async (req) => {
         )
       )
     );
+
+    // Push is a separate channel from email — sent to whichever full-access
+    // members (owner/editor) have a linked app account and have turned this
+    // category on, regardless of whether an email recipient was resolved
+    // above (push needs an actual user_id, not an address). Best-effort:
+    // never lets a push failure affect the email sent/skipped/failures
+    // tracking below, which stays the source of truth for
+    // last_reminder_sent_at.
+    const { data: members } = await supabase
+      .from("wedding_members")
+      .select("user_id, role")
+      .eq("wedding_id", row.wedding_id)
+      .in("role", ["owner", "editor"]);
+    await Promise.all(
+      (members ?? [])
+        .filter((m: { user_id: string | null }) => m.user_id)
+        .map((m: { user_id: string }) =>
+          sendPushToUser(supabase, m.user_id, row.wedding_id, "payment_due", {
+            title: "Payment due soon",
+            body: `${row.expense_name}: ${formatCurrency(row.amount, row.currency ?? "USD")} due ${formatDueDate(row.due_date)}`,
+            url: "/budget",
+          }).catch(() => {})
+        )
+    );
+
     if (recipients.length === 0) {
       skipped += 1;
       continue;

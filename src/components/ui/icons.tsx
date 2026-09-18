@@ -131,3 +131,12 @@ export function PhoneIcon(props: IconProps) {
     </svg>
   );
 }
+
+export function BellIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M6 10.5a6 6 0 0 1 12 0v3.7l1.6 2.8H4.4L6 14.2Z" />
+      <path d="M10 19.5a2 2 0 0 0 4 0" />
+    </svg>
+  );
+}

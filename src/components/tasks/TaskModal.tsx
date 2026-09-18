@@ -36,6 +36,11 @@ export function TaskModal({
   const [saving, setSaving] = useState(false);
 
   const people = members.filter((m) => m.user_id);
+  // Captured once (this modal remounts via a fresh key on every open — see
+  // tasks/page.tsx's modalKey — so task itself never changes mid-session)
+  // to tell "assignment changed" from "assignment saved again unchanged",
+  // so editing a task's due date doesn't re-notify its existing assignee.
+  const initialAssignedTo = task?.assigned_to_both ? "both" : task?.assigned_user_id ?? "unassigned";
 
   async function handleSave() {
     if (!wedding || !user || !title.trim()) return;
@@ -51,10 +56,12 @@ export function TaskModal({
       notes: notes.trim() || null,
     };
 
+    let taskId = task?.id;
     if (task) {
       await supabase.from("tasks").update(payload).eq("id", task.id);
     } else {
-      await supabase.from("tasks").insert(payload);
+      const { data: inserted } = await supabase.from("tasks").insert(payload).select("id").single();
+      taskId = inserted?.id;
     }
 
     await logActivity(supabase, {
@@ -65,6 +72,16 @@ export function TaskModal({
       entityType: "task",
       entityId: task?.id,
     });
+
+    if (taskId && assignedTo !== "unassigned" && (!task || assignedTo !== initialAssignedTo)) {
+      fetch("/api/notify/task-assigned", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ taskId }),
+      }).catch(() => {
+        // Best-effort — the task itself already saved fine either way.
+      });
+    }
 
     setSaving(false);
     onSaved();
