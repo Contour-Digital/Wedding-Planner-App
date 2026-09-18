@@ -9,7 +9,7 @@ import { logActivity } from "@/lib/activity/logActivity";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
-import { Field, Input, Select } from "@/components/ui/Input";
+import { Field, Input, Select, Textarea } from "@/components/ui/Input";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ROLE_DESCRIPTION, ROLE_LABEL, canManageMembers } from "@/lib/utils/permissions";
 import { copyToClipboard } from "@/lib/utils/clipboard";
@@ -27,10 +27,10 @@ export default function SharingPage() {
   const [inviteRole, setInviteRole] = useState<WeddingRole>("timeline_viewer");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [generatedLink, setGeneratedLink] = useState<string | null>(null);
+  const [generatedMessage, setGeneratedMessage] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
-  const [linkStatus, setLinkStatus] = useState<{ memberId: string; message: string } | null>(null);
+  const [rowStatus, setRowStatus] = useState<{ memberId: string; message: string } | null>(null);
 
   const canManage = canManageMembers(role);
   const removingMember = members.find((m) => m.id === removingMemberId) ?? null;
@@ -47,9 +47,9 @@ export default function SharingPage() {
     setCreating(true);
     setError(null);
     setNotice(null);
-    setGeneratedLink(null);
+    setGeneratedMessage(null);
 
-    let result: { ok?: boolean; inviteLink?: string; alreadyHasAccess?: boolean; error?: string };
+    let result: { ok?: boolean; message?: string | null; alreadyHasAccess?: boolean; error?: string };
     try {
       const res = await fetch("/api/invite", {
         method: "POST",
@@ -82,11 +82,11 @@ export default function SharingPage() {
     });
 
     if (result.alreadyHasAccess) {
-      setNotice(`${email.trim()} already has an account — they now have access, no link needed.`);
-    } else if (result.inviteLink) {
-      setGeneratedLink(result.inviteLink);
-      await copyToClipboard(result.inviteLink);
-      setNotice("Link copied — share it with them however you like (text, WhatsApp, etc).");
+      setNotice(`${email.trim()} already has an account — they now have access, no message needed.`);
+    } else if (result.message) {
+      setGeneratedMessage(result.message);
+      await copyToClipboard(result.message);
+      setNotice("Message copied — paste it into a text, WhatsApp, email, however you like.");
     }
     setName("");
     setEmail("");
@@ -94,10 +94,34 @@ export default function SharingPage() {
     setCreating(false);
   }
 
-  async function copyMemberLink(memberId: string) {
-    const link = `${window.location.origin}/invite/${memberId}`;
-    const copied = await copyToClipboard(link);
-    setLinkStatus({ memberId, message: copied ? "Link copied!" : link });
+  // Reuses the same create/reset endpoint with this row's existing details
+  // — always generates a fresh password (nothing from the original is
+  // stored anywhere to hand out again), so this doubles as "resend".
+  async function copyMemberMessage(memberId: string, invitedEmail: string, memberRole: WeddingRole, invitedName: string | null) {
+    if (!wedding) return;
+    setRowStatus({ memberId, message: "Generating…" });
+    try {
+      const res = await fetch("/api/invite", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          weddingId: wedding.id,
+          email: invitedEmail,
+          role: memberRole,
+          name: invitedName || undefined,
+        }),
+      });
+      const result = await res.json();
+      if (!res.ok || !result.message) {
+        setRowStatus({ memberId, message: result.error ?? "Couldn't generate a new invite message." });
+        return;
+      }
+      await copyToClipboard(result.message);
+      setRowStatus({ memberId, message: "Message copied! (a new password was generated)" });
+      refresh();
+    } catch {
+      setRowStatus({ memberId, message: "Couldn't reach the server — check your connection and try again." });
+    }
   }
 
   async function updateRole(memberId: string, newRole: WeddingRole) {
@@ -127,9 +151,9 @@ export default function SharingPage() {
         <Card className="space-y-3">
           <h3 className="font-display text-lg font-semibold">Invite someone</h3>
           <p className="text-xs text-muted">
-            We&apos;ll generate a unique link for them — share it however you like. It only works for the email
-            address below, and gives them exactly the access you set here. If they already have an account, they
-            get access immediately instead — no link needed.
+            We&apos;ll create their account and give you a ready-to-send message — a link plus a password — to
+            share however you like (text, WhatsApp, etc). If they already have an account, they get access
+            immediately instead — no message needed.
           </p>
           <div className="flex flex-col gap-2 sm:flex-row">
             <Field label="Name" hint="Optional — shown here before they accept">
@@ -151,16 +175,16 @@ export default function SharingPage() {
           <p className="text-xs text-muted">{ROLE_DESCRIPTION[inviteRole]}</p>
           {error && <p className="text-sm text-danger">{error}</p>}
           {notice && <p className="text-sm text-good">{notice}</p>}
-          {generatedLink && (
-            <div className="flex flex-col gap-2 sm:flex-row">
-              <Input readOnly value={generatedLink} onFocus={(e) => e.target.select()} />
-              <Button variant="secondary" onClick={() => copyToClipboard(generatedLink)}>
-                Copy
+          {generatedMessage && (
+            <div className="space-y-2">
+              <Textarea readOnly rows={4} value={generatedMessage} onFocus={(e) => e.target.select()} />
+              <Button variant="secondary" onClick={() => copyToClipboard(generatedMessage)}>
+                Copy again
               </Button>
             </div>
           )}
           <Button onClick={createInvite} disabled={creating}>
-            {creating ? "Creating link…" : "Create invite link"}
+            {creating ? "Creating…" : "Create invite"}
           </Button>
         </Card>
 
@@ -200,12 +224,12 @@ export default function SharingPage() {
                             </option>
                           ))}
                         </Select>
-                        {!m.confirmed && (
+                        {!m.confirmed && m.invited_email && (
                           <button
-                            onClick={() => copyMemberLink(m.id)}
+                            onClick={() => copyMemberMessage(m.id, m.invited_email!, m.role, m.invited_name)}
                             className="whitespace-nowrap text-xs font-medium text-primaryStrong"
                           >
-                            Copy invite link
+                            Copy invite message
                           </button>
                         )}
                         <button onClick={() => setRemovingMemberId(m.id)} className="text-xs text-danger">
@@ -214,8 +238,8 @@ export default function SharingPage() {
                       </div>
                     )}
                   </div>
-                  {linkStatus?.memberId === m.id && (
-                    <p className="mt-2 break-all text-xs text-good">{linkStatus.message}</p>
+                  {rowStatus?.memberId === m.id && (
+                    <p className="mt-2 break-all text-xs text-good">{rowStatus.message}</p>
                   )}
                 </div>
               );

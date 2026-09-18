@@ -12,12 +12,12 @@ import type { WeddingRole } from "@/lib/types/database";
 
 interface InviteInfo {
   valid: boolean;
-  alreadyClaimed?: boolean;
+  everSignedIn?: boolean;
+  accountReady?: boolean;
   role?: WeddingRole;
   invitedName?: string | null;
   invitedEmail?: string;
   weddingLabel?: string;
-  hasExistingAccount?: boolean;
 }
 
 function Shell({ children }: { children: React.ReactNode }) {
@@ -30,12 +30,11 @@ function Shell({ children }: { children: React.ReactNode }) {
 
 export default function InviteLinkPage() {
   const params = useParams<{ id: string }>();
-  const { user, refresh } = useWedding();
+  const { user } = useWedding();
   const supabase = createClient();
 
   const [info, setInfo] = useState<InviteInfo | null>(null);
   const [password, setPassword] = useState("");
-  const [signInPassword, setSignInPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
 
@@ -46,28 +45,36 @@ export default function InviteLinkPage() {
       .catch(() => setInfo({ valid: false }));
   }, [params.id]);
 
-  async function claim() {
-    setSubmitting(true);
-    setError(null);
-    try {
-      const res = await fetch(`/api/invite-link/${params.id}`, { method: "POST" });
-      const result = await res.json();
-      if (!res.ok) {
-        setError(result.error ?? "Couldn't accept that invite.");
-        setSubmitting(false);
-        return;
-      }
-      await refresh();
-      // Hard navigation, not router.replace — the session cookie was just
-      // set by the server, and a full page load is what reliably picks
-      // that up rather than racing the client SDK's own state.
-      window.location.href = "/dashboard";
-    } catch {
-      setError("Couldn't reach the server — check your connection and try again.");
-      setSubmitting(false);
-    }
+  // Hard navigation, not router.replace — a full page load is what
+  // reliably picks up the session cookie/state a sign-in just set, rather
+  // than racing the client SDK's own state.
+  function goToDashboard() {
+    window.location.href = "/dashboard";
   }
 
+  async function handleSignIn(e: React.FormEvent) {
+    e.preventDefault();
+    if (!info?.invitedEmail) return;
+    setSubmitting(true);
+    setError(null);
+    const { error: signInError } = await supabase.auth.signInWithPassword({
+      email: info.invitedEmail,
+      password,
+    });
+    if (signInError) {
+      setError(
+        signInError.message === "Invalid login credentials"
+          ? "That password isn't right — check for typos, or ask whoever sent this invite for a fresh one."
+          : signInError.message
+      );
+      setSubmitting(false);
+      return;
+    }
+    goToDashboard();
+  }
+
+  // Legacy fallback: a pending row created before invites generated their
+  // own password (accountReady: false) still needs to set one here.
   async function handleCreateAccount(e: React.FormEvent) {
     e.preventDefault();
     setSubmitting(true);
@@ -84,28 +91,11 @@ export default function InviteLinkPage() {
         setSubmitting(false);
         return;
       }
-      window.location.href = "/dashboard";
+      goToDashboard();
     } catch {
       setError("Couldn't reach the server — check your connection and try again.");
       setSubmitting(false);
     }
-  }
-
-  async function handleSignIn(e: React.FormEvent) {
-    e.preventDefault();
-    if (!info?.invitedEmail) return;
-    setSubmitting(true);
-    setError(null);
-    const { error: signInError } = await supabase.auth.signInWithPassword({
-      email: info.invitedEmail,
-      password: signInPassword,
-    });
-    if (signInError) {
-      setError(signInError.message);
-      setSubmitting(false);
-      return;
-    }
-    await claim();
   }
 
   async function handleSignOut() {
@@ -136,7 +126,7 @@ export default function InviteLinkPage() {
 
   const roleLabel = info.role ? ROLE_LABEL[info.role] : "";
 
-  if (info.alreadyClaimed) {
+  if (info.everSignedIn) {
     const isMe = user?.email?.toLowerCase() === info.invitedEmail?.toLowerCase();
     return (
       <Shell>
@@ -144,7 +134,7 @@ export default function InviteLinkPage() {
           <h1 className="font-display text-2xl font-semibold text-ink">Invite already accepted</h1>
           <p className="mt-2 text-sm text-muted">
             {isMe
-              ? "You've already accepted this invite."
+              ? "You've already signed in with this invite before."
               : "This invite has already been accepted by whoever it was sent to."}
           </p>
           <Link
@@ -177,6 +167,22 @@ export default function InviteLinkPage() {
     );
   }
 
+  // Already signed in as the right account (e.g. reopened this link after
+  // accepting) — nothing left to do.
+  if (user) {
+    return (
+      <Shell>
+        <div className="text-center">
+          <h1 className="font-display text-2xl font-semibold text-ink">You&apos;re in! 🎉</h1>
+          <p className="mt-2 text-sm text-muted">You already have access.</p>
+          <Button className="mt-4" onClick={goToDashboard}>
+            Go to your dashboard
+          </Button>
+        </div>
+      </Shell>
+    );
+  }
+
   const heading = (
     <div className="text-center">
       <h1 className="font-display text-2xl font-semibold text-ink">You&apos;re invited! 💍</h1>
@@ -188,20 +194,7 @@ export default function InviteLinkPage() {
     </div>
   );
 
-  // Already signed in as the right account — just needs one click.
-  if (user) {
-    return (
-      <Shell>
-        {heading}
-        {error && <p className="text-center text-sm text-danger">{error}</p>}
-        <Button fullWidth onClick={claim} disabled={submitting}>
-          {submitting ? "Joining…" : "Accept invite"}
-        </Button>
-      </Shell>
-    );
-  }
-
-  if (info.hasExistingAccount) {
+  if (info.accountReady) {
     return (
       <Shell>
         {heading}
@@ -209,13 +202,8 @@ export default function InviteLinkPage() {
           <Field label="Email">
             <Input type="email" value={info.invitedEmail} disabled />
           </Field>
-          <Field label="Password">
-            <Input
-              type="password"
-              required
-              value={signInPassword}
-              onChange={(e) => setSignInPassword(e.target.value)}
-            />
+          <Field label="Password" hint="The one you were sent along with this link">
+            <Input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} />
           </Field>
           {error && <p className="text-sm text-danger">{error}</p>}
           <Button type="submit" fullWidth disabled={submitting}>

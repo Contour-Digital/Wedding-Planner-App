@@ -1,21 +1,25 @@
 import { NextResponse } from "next/server";
 import { createClient as createSupabaseAdminClient } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
+import { generatePassword } from "@/lib/server/generatePassword";
 
-// Creates (or updates) a pending wedding_members row for the invitee and
-// hands back a shareable link — /invite/{memberRowId} — instead of sending
-// an email. Email delivery (Supabase's own mailer and, before that, Resend)
-// turned out to be unreliable enough in practice that invitees were never
-// getting anything, so invites are now handed over out-of-band (text,
-// WhatsApp, however the couple wants) and claimed by whoever opens the
-// link — see /api/invite-link/[id] for the claim side.
+// Creates (or resets) an invitee's account and hands back a ready-to-send
+// message — a link plus a password — instead of an email. Email delivery
+// (Supabase's own mailer, and Resend before it) wasn't reliably reaching
+// invitees, and even the follow-up link-only approach ("set your own
+// password when you first open the link") left a confusing window where an
+// account existed but nobody had signed into it yet — see the wording
+// change to "confirmed" in migration 0016. Handing over a working password
+// up front removes that window entirely: the account is ready to use the
+// moment this returns.
 //
 // Requires a SUPABASE_SERVICE_ROLE_KEY env var (Supabase dashboard → Project
 // Settings → API → service_role secret) — server-only, no NEXT_PUBLIC_
-// prefix — since reading/writing wedding_members for someone else needs it.
+// prefix — since reading/writing wedding_members and creating auth users
+// for someone else both need it.
 //
 // Rate limited per wedding (see invite_requests below) — a sane cap on how
-// many invite links one wedding can generate per hour.
+// many invites/resets one wedding can generate per hour.
 const INVITE_RATE_LIMIT = 20;
 
 export async function POST(request: Request) {
@@ -95,42 +99,92 @@ export async function POST(request: Request) {
 
   await admin.from("invite_requests").insert({ wedding_id: weddingId, requested_by: user.id });
 
-  // If this email already has an account, grant access immediately — no
-  // point making an existing user click a link and re-authenticate just to
-  // get a role they can already be given directly.
-  const { data: existingProfile } = await admin.from("profiles").select("id").eq("email", email).maybeSingle();
-  const invitedUserId = existingProfile?.id ?? null;
+  const { data: wedding } = await supabase
+    .from("weddings")
+    .select("partner_1, partner_2")
+    .eq("id", weddingId)
+    .maybeSingle();
+  const inviterLabel =
+    wedding?.partner_1 && wedding?.partner_2 ? `${wedding.partner_1} & ${wedding.partner_2}` : "The wedding couple";
 
-  // Update an existing row for this person on this wedding if one already
-  // exists (e.g. a prior pending invite, or changing their role), otherwise
-  // insert a new one. Two separate .eq() branches rather than a single
-  // .or() filter string — PostgREST's .or() syntax uses "column.op.value"
-  // with dots as separators, and email addresses always contain dots,
-  // which would corrupt that filter string.
-  const memberLookup = admin.from("wedding_members").select("id").eq("wedding_id", weddingId);
-  const { data: existingMember } = invitedUserId
-    ? await memberLookup.eq("user_id", invitedUserId).maybeSingle()
+  // Grant access immediately, with no new credentials, only for someone
+  // who has genuinely already signed in before — not just anyone with a
+  // profiles row, since that row exists just as much for an account WE
+  // created via a previous invite that nobody has ever actually logged
+  // into yet. A profiles row alone can't tell those two apart; whether
+  // Supabase has ever recorded a real sign-in can.
+  const { data: existingProfile } = await admin.from("profiles").select("id").eq("email", email).maybeSingle();
+  let everSignedIn = false;
+  if (existingProfile) {
+    const { data: existingUserData } = await admin.auth.admin.getUserById(existingProfile.id);
+    everSignedIn = existingUserData?.user?.last_sign_in_at != null;
+  }
+
+  // Look up any existing row for this person on this wedding first — a
+  // prior pending invite, or a re-invite that should reset their
+  // credentials rather than create a duplicate account. Two separate
+  // .eq() branches rather than a single .or() filter string — PostgREST's
+  // .or() syntax uses "column.op.value" with dots as separators, and email
+  // addresses always contain dots, which would corrupt that filter string.
+  const memberLookup = admin.from("wedding_members").select("id, user_id").eq("wedding_id", weddingId);
+  const { data: existingMember } = existingProfile
+    ? await memberLookup.eq("user_id", existingProfile.id).maybeSingle()
     : await memberLookup.eq("invited_email", email).maybeSingle();
 
-  // invited_email always stays set to the target address, even once
-  // user_id is also known — it's the permanent record of who this invite
-  // belongs to, and what the invite link's claim step checks the signing-in
-  // email against.
+  let invitedUserId: string | null = everSignedIn ? existingProfile!.id : null;
+  let password: string | null = null;
+  let inviteLink: string | null = null;
+  let message: string | null = null;
+
+  if (!invitedUserId) {
+    // No account yet ever signed into for this email — create one (or
+    // reset its password if we already made it for a prior invite that
+    // went unused) with a fresh generated password. email_confirm: true
+    // skips Supabase's own confirmation round-trip entirely: the couple
+    // handing this password to the invitee, out of band, is itself the
+    // confirmation.
+    password = generatePassword();
+    const targetUserId = existingProfile?.id ?? existingMember?.user_id ?? null;
+
+    if (targetUserId) {
+      const { error: updateError } = await admin.auth.admin.updateUserById(targetUserId, { password });
+      if (updateError) return NextResponse.json({ error: updateError.message }, { status: 400 });
+      invitedUserId = targetUserId;
+    } else {
+      const { data: created, error: createError } = await admin.auth.admin.createUser({
+        email,
+        password,
+        email_confirm: true,
+        user_metadata: name ? { full_name: name } : undefined,
+      });
+      if (createError || !created?.user) {
+        return NextResponse.json(
+          { error: createError?.message ?? "Couldn't create that invite." },
+          { status: 400 }
+        );
+      }
+      invitedUserId = created.user.id;
+    }
+  }
+
+  if (!invitedUserId) {
+    // Unreachable in practice — every branch above either sets it or
+    // returns early — but narrows the type for what follows.
+    return NextResponse.json({ error: "Something went wrong creating that invite." }, { status: 500 });
+  }
+
   const memberPayload: {
     wedding_id: string;
-    user_id: string | null;
+    user_id: string;
     invited_email: string;
     role: string;
     invited_name?: string;
   } = { wedding_id: weddingId, user_id: invitedUserId, invited_email: email, role };
+  if (name) memberPayload.invited_name = name;
 
-  // Only set when actually provided — e.g. re-creating a link for someone
-  // that doesn't re-ask for a name shouldn't clobber the name already on
-  // file for them.
-  if (name) {
-    memberPayload.invited_name = name;
-  }
-
+  // The invite link's token is this wedding_members row's own id, not the
+  // auth user's id — one person can be invited to more than one wedding,
+  // and the link needs to say which membership it's for, not just who.
   let memberId: string;
   if (existingMember) {
     const { error: dbError } = await admin.from("wedding_members").update(memberPayload).eq("id", existingMember.id);
@@ -148,8 +202,11 @@ export async function POST(request: Request) {
     memberId = inserted.id;
   }
 
-  const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? new URL(request.url).origin;
-  const inviteLink = `${siteUrl}/invite/${memberId}`;
+  if (password) {
+    const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? new URL(request.url).origin;
+    inviteLink = `${siteUrl}/invite/${memberId}`;
+    message = `${inviterLabel} invited you to help plan their wedding! 💍\n\nJoin here: ${inviteLink}\nYour password: ${password}\n\n(You can change your password after signing in.)`;
+  }
 
-  return NextResponse.json({ ok: true, inviteLink, alreadyHasAccess: invitedUserId !== null });
+  return NextResponse.json({ ok: true, inviteLink, password, message, alreadyHasAccess: password === null });
 }
