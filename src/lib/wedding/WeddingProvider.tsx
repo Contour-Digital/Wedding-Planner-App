@@ -42,10 +42,17 @@ export function WeddingProvider({ children }: { children: React.ReactNode }) {
       return;
     }
 
+    // Ordered explicitly — without it, Postgres doesn't guarantee row order,
+    // so ids[0] below (the fallback "active wedding" whenever localStorage
+    // has no saved choice, e.g. a different browser/device or a cleared
+    // cache) wouldn't be stable for anyone belonging to more than one
+    // wedding. Oldest-first makes it deterministic and matches the most
+    // likely "main" wedding for someone who's ended up in several.
     const { data: memberships } = await supabase
       .from("wedding_members")
       .select("wedding_id, role")
-      .eq("user_id", currentUser.id);
+      .eq("user_id", currentUser.id)
+      .order("created_at", { ascending: true });
 
     const ids = (memberships ?? []).map((m) => m.wedding_id);
     setWeddingIds(ids);
