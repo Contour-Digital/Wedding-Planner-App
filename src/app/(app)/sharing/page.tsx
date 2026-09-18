@@ -11,6 +11,7 @@ import { Button } from "@/components/ui/Button";
 import { Badge } from "@/components/ui/Badge";
 import { Field, Input, Select, Textarea } from "@/components/ui/Input";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { Spinner } from "@/components/ui/Spinner";
 import { ROLE_DESCRIPTION, ROLE_LABEL, canManageMembers } from "@/lib/utils/permissions";
 import { copyToClipboard } from "@/lib/utils/clipboard";
 import type { WeddingRole } from "@/lib/types/database";
@@ -40,6 +41,7 @@ export default function SharingPage() {
     null
   );
   const [rowError, setRowError] = useState<{ memberId: string; message: string } | null>(null);
+  const [copyingMemberId, setCopyingMemberId] = useState<string | null>(null);
 
   const canManage = canManageMembers(role);
   const removingMember = members.find((m) => m.id === removingMemberId) ?? null;
@@ -117,6 +119,7 @@ export default function SharingPage() {
     if (!wedding) return;
     setRowError(null);
     setRowMessage(null);
+    setCopyingMemberId(memberId);
     try {
       const res = await fetch("/api/invite", {
         method: "POST",
@@ -138,6 +141,8 @@ export default function SharingPage() {
       refresh();
     } catch {
       setRowError({ memberId, message: "Couldn't reach the server — check your connection and try again." });
+    } finally {
+      setCopyingMemberId(null);
     }
   }
 
@@ -200,7 +205,7 @@ export default function SharingPage() {
               </Button>
             </div>
           )}
-          <Button onClick={createInvite} disabled={creating}>
+          <Button onClick={createInvite} loading={creating}>
             {creating ? "Creating…" : "Create invite"}
           </Button>
         </Card>
@@ -244,9 +249,11 @@ export default function SharingPage() {
                         {!m.confirmed && m.invited_email && (
                           <button
                             onClick={() => copyMemberMessage(m.id, m.invited_email!, m.role, m.invited_name)}
-                            className="whitespace-nowrap text-xs font-medium text-primaryStrong"
+                            disabled={copyingMemberId === m.id}
+                            className="inline-flex items-center gap-1.5 whitespace-nowrap text-xs font-medium text-primaryStrong disabled:opacity-60"
                           >
-                            Copy invite message
+                            {copyingMemberId === m.id && <Spinner className="h-3 w-3" />}
+                            {copyingMemberId === m.id ? "Generating…" : "Copy invite message"}
                           </button>
                         )}
                         <button onClick={() => setRemovingMemberId(m.id)} className="text-xs text-danger">
