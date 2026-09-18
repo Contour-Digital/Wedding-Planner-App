@@ -1,7 +1,29 @@
 import { NextResponse } from "next/server";
-import { createClient as createSupabaseAdminClient } from "@supabase/supabase-js";
+import { createClient as createSupabaseAdminClient, type SupabaseClient, type User } from "@supabase/supabase-js";
 import { createClient as createServerClient } from "@/lib/supabase/server";
 import { generatePassword } from "@/lib/server/generatePassword";
+
+// Looks an account up in auth.users directly by email, rather than via the
+// profiles table — confirmed (twice, on this project's live data) that
+// profiles can go out of sync with auth.users, e.g. a row missing for an
+// account that still exists. Trusting profiles for "does this email
+// already have an account" caused two different bugs: orphaned
+// wedding_members rows with no way to ever resend to, and createUser()
+// failing with "A user with this email address has already been
+// registered" because an auth.users row existed that profiles didn't know
+// about. supabase-js has no getUserByEmail, so this pages through
+// listUsers — fine at this app's scale.
+async function findAuthUserByEmail(admin: SupabaseClient, email: string): Promise<User | null> {
+  const perPage = 200;
+  for (let page = 1; page <= 50; page++) {
+    const { data, error } = await admin.auth.admin.listUsers({ page, perPage });
+    if (error || !data) return null;
+    const match = data.users.find((u) => u.email?.toLowerCase() === email);
+    if (match) return match;
+    if (data.users.length < perPage) return null;
+  }
+  return null;
+}
 
 // Creates (or resets) an invitee's account and hands back a ready-to-send
 // message — a link plus a password — instead of an email. Email delivery
@@ -108,17 +130,12 @@ export async function POST(request: Request) {
     wedding?.partner_1 && wedding?.partner_2 ? `${wedding.partner_1} & ${wedding.partner_2}` : "The wedding couple";
 
   // Grant access immediately, with no new credentials, only for someone
-  // who has genuinely already signed in before — not just anyone with a
-  // profiles row, since that row exists just as much for an account WE
-  // created via a previous invite that nobody has ever actually logged
-  // into yet. A profiles row alone can't tell those two apart; whether
-  // Supabase has ever recorded a real sign-in can.
-  const { data: existingProfile } = await admin.from("profiles").select("id").eq("email", email).maybeSingle();
-  let everSignedIn = false;
-  if (existingProfile) {
-    const { data: existingUserData } = await admin.auth.admin.getUserById(existingProfile.id);
-    everSignedIn = existingUserData?.user?.last_sign_in_at != null;
-  }
+  // who has genuinely already signed in before — not just anyone with an
+  // account, since that account might be one WE created via a previous
+  // invite that nobody has ever actually logged into yet. Whether Supabase
+  // has ever recorded a real sign-in is what tells those two apart.
+  const existingAuthUser = await findAuthUserByEmail(admin, email);
+  const everSignedIn = existingAuthUser?.last_sign_in_at != null;
 
   // Look up any existing row for this person on this wedding first — a
   // prior pending invite, or a re-invite that should reset their
@@ -127,11 +144,11 @@ export async function POST(request: Request) {
   // .or() syntax uses "column.op.value" with dots as separators, and email
   // addresses always contain dots, which would corrupt that filter string.
   const memberLookup = admin.from("wedding_members").select("id, user_id").eq("wedding_id", weddingId);
-  const { data: existingMember } = existingProfile
-    ? await memberLookup.eq("user_id", existingProfile.id).maybeSingle()
+  const { data: existingMember } = existingAuthUser
+    ? await memberLookup.eq("user_id", existingAuthUser.id).maybeSingle()
     : await memberLookup.eq("invited_email", email).maybeSingle();
 
-  let invitedUserId: string | null = everSignedIn ? existingProfile!.id : null;
+  let invitedUserId: string | null = everSignedIn ? existingAuthUser!.id : null;
   let password: string | null = null;
   let inviteLink: string | null = null;
   let message: string | null = null;
@@ -144,7 +161,7 @@ export async function POST(request: Request) {
     // handing this password to the invitee, out of band, is itself the
     // confirmation.
     password = generatePassword();
-    const targetUserId = existingProfile?.id ?? existingMember?.user_id ?? null;
+    const targetUserId = existingAuthUser?.id ?? existingMember?.user_id ?? null;
 
     if (targetUserId) {
       const { error: updateError } = await admin.auth.admin.updateUserById(targetUserId, { password });
@@ -158,12 +175,26 @@ export async function POST(request: Request) {
         user_metadata: name ? { full_name: name } : undefined,
       });
       if (createError || !created?.user) {
-        return NextResponse.json(
-          { error: createError?.message ?? "Couldn't create that invite." },
-          { status: 400 }
-        );
+        // Last-resort fallback: createUser can still fail with "already
+        // registered" in the narrow window between the listUsers lookup
+        // above and this call (e.g. a concurrent invite for the same
+        // email), or if listUsers missed a page under load. One more
+        // direct lookup and, if found this time, reset its password
+        // instead of giving up.
+        const fallbackUser = await findAuthUserByEmail(admin, email);
+        if (fallbackUser) {
+          const { error: updateError } = await admin.auth.admin.updateUserById(fallbackUser.id, { password });
+          if (updateError) return NextResponse.json({ error: updateError.message }, { status: 400 });
+          invitedUserId = fallbackUser.id;
+        } else {
+          return NextResponse.json(
+            { error: createError?.message ?? "Couldn't create that invite." },
+            { status: 400 }
+          );
+        }
+      } else {
+        invitedUserId = created.user.id;
       }
-      invitedUserId = created.user.id;
     }
   }
 
