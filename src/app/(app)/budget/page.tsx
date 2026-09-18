@@ -109,11 +109,8 @@ export default function BudgetPage() {
           <Button variant="secondary" onClick={exportCsv} disabled={expenses.length === 0}>
             Export CSV
           </Button>
-          <Link
-            href="/budget/upcoming"
-            className="inline-flex items-center rounded-full border border-line px-3 py-1.5 text-xs font-medium text-primaryStrong hover:bg-line"
-          >
-            Upcoming payments
+          <Link href="/budget/upcoming">
+            <Button variant="outline">Upcoming payments</Button>
           </Link>
         </div>
 
