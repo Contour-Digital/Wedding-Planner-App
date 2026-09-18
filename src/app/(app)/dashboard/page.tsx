@@ -20,7 +20,7 @@ export default function DashboardPage() {
   const { vendors } = useVendors(weddingId);
 
   const showFinancials = canSeeFinancials(role);
-  const totals = weddingTotals(wedding?.total_budget ?? 0, expenses);
+  const totals = weddingTotals(wedding?.total_budget ?? 0, expenses, vendors);
 
   const openTasks = tasks.filter((t) => !t.completed);
   const tasksDueThisMonth = openTasks.filter((t) => isDueThisMonth(t.due_date));

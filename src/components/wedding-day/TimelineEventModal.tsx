@@ -8,7 +8,6 @@ import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Select, Textarea } from "@/components/ui/Input";
 import { TIMELINE_GROUP_LABEL, TIMELINE_GROUP_OPTIONS } from "./timelineMeta";
-import { formatTime } from "@/lib/utils/date";
 import type { TimelineEvent, TimelineGroup } from "@/lib/types/database";
 
 export function TimelineEventModal({
@@ -46,18 +45,13 @@ export function TimelineEventModal({
       wedding_id: wedding.id,
       group_name: group,
       title: title.trim(),
+      start_time: startTime || null,
       duration_minutes: duration ? Number(duration) : null,
       location: location.trim() || null,
       responsible_person: responsible.trim() || null,
       shared_notes: sharedNotes.trim() || null,
       private_notes: privateNotes.trim() || null,
     };
-
-    // Ceremony's start_time is controlled from Settings only — the DB trigger
-    // would silently ignore any change here anyway, but we don't even send it.
-    if (!isCeremony) {
-      payload.start_time = startTime || null;
-    }
 
     if (event) {
       await supabase.from("timeline_events").update(payload).eq("id", event.id);
@@ -95,16 +89,8 @@ export function TimelineEventModal({
           </Select>
         </Field>
         <div className="grid grid-cols-2 gap-3">
-          <Field
-            label="Start time"
-            hint={isCeremony ? `Set in Settings (currently ${formatTime(event?.start_time)})` : undefined}
-          >
-            <Input
-              type="time"
-              value={startTime}
-              onChange={(e) => setStartTime(e.target.value)}
-              disabled={isCeremony}
-            />
+          <Field label="Start time">
+            <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
           </Field>
           <Field label="Duration (minutes)">
             <Input type="number" value={duration} onChange={(e) => setDuration(e.target.value)} />

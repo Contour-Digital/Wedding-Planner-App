@@ -42,8 +42,8 @@ export default function BudgetPage() {
     );
   }
 
-  const totals = weddingTotals(wedding?.total_budget ?? 0, expenses);
-  const byCategory = categoryTotals(categories, expenses);
+  const totals = weddingTotals(wedding?.total_budget ?? 0, expenses, vendors);
+  const byCategory = categoryTotals(categories, expenses, vendors);
   const expectedCosts = sum(byCategory.map((c) => c.targetBudget));
 
   function refresh() {
