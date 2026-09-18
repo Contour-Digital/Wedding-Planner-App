@@ -12,22 +12,10 @@ import { Badge } from "@/components/ui/Badge";
 import { Field, Input, Select } from "@/components/ui/Input";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ROLE_DESCRIPTION, ROLE_LABEL, canManageMembers } from "@/lib/utils/permissions";
+import { copyToClipboard } from "@/lib/utils/clipboard";
 import type { WeddingRole } from "@/lib/types/database";
 
 const INVITABLE_ROLES: WeddingRole[] = ["editor", "viewer", "timeline_viewer"];
-
-// Best-effort clipboard write — the Clipboard API can be blocked (some
-// in-app/PWA webviews, non-HTTPS contexts), so a failed copy still hands
-// the caller the link to show and let the person copy manually instead of
-// just silently doing nothing.
-async function copyToClipboard(text: string) {
-  try {
-    await navigator.clipboard.writeText(text);
-    return true;
-  } catch {
-    return false;
-  }
-}
 
 export default function SharingPage() {
   const { wedding, user, role } = useWedding();
