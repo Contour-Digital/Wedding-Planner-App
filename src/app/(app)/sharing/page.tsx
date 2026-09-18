@@ -164,12 +164,13 @@ export default function SharingPage() {
             {members.map((m) => {
               const displayName = m.profile?.full_name ?? m.invited_name ?? m.invited_email ?? "Pending invite";
               const displayEmail = m.profile?.email ?? m.invited_email;
-              // The email to resend to: invited_email is only ever set
-              // before someone's account exists — the moment /api/invite
-              // creates it, the trigger clears invited_email and sets
-              // user_id, well before they've actually confirmed — so once
-              // that's happened, fall back to their (still unconfirmed)
-              // account's own email via the profile join.
+              // The email to resend to. invited_email is the permanent
+              // record of what address an invite was sent to (see
+              // migration 0015 — it used to get cleared the moment the
+              // invite was claimed, long before confirmation, which left
+              // nothing to resend to if anything downstream ever went
+              // wrong). profile?.email is still a fallback for rows
+              // created before that migration.
               const resendTargetEmail = m.invited_email ?? m.profile?.email ?? null;
               const isOwner = m.role === "owner";
               return (
