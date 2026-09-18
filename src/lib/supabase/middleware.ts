@@ -11,16 +11,23 @@ export async function updateSession(request: NextRequest) {
     process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
     {
       cookies: {
-        get(name: string) {
-          return request.cookies.get(name)?.value;
+        getAll() {
+          return request.cookies.getAll();
         },
-        set(name: string, value: string, options: CookieOptions) {
+        // setAll gets the whole batch in one call, unlike the older
+        // get/set/remove API — that older API called set()/remove() once
+        // per cookie, and each call here used to rebuild `response` from
+        // scratch, so every write but the last got silently dropped. A
+        // refreshed session's auth cookie is exactly the case that writes
+        // more than one cookie at once, so that bug corrupted the session
+        // on refresh — the next time the app reopened, the token couldn't
+        // be read back and it looked signed out. Building `response` once
+        // per request and writing every cookie onto that same object
+        // (matching Supabase's own documented pattern) fixes it.
+        setAll(cookiesToSet: { name: string; value: string; options: CookieOptions }[]) {
+          cookiesToSet.forEach(({ name, value }) => request.cookies.set(name, value));
           response = NextResponse.next({ request: { headers: request.headers } });
-          response.cookies.set({ name, value, ...options });
-        },
-        remove(name: string, options: CookieOptions) {
-          response = NextResponse.next({ request: { headers: request.headers } });
-          response.cookies.set({ name, value: "", ...options });
+          cookiesToSet.forEach(({ name, value, options }) => response.cookies.set({ name, value, ...options }));
         },
       },
     }
