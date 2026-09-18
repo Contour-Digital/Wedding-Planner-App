@@ -45,3 +45,23 @@ body {
     background: white;
   }
 }
+
+/* The app icon on the loading screen (src/app/(app)/layout.tsx) — a gentle
+   scale + fade "breathing" loop rather than a spin, since it's a static
+   logo mark (interlocking rings) rather than something that reads as
+   spinning naturally. */
+@keyframes breathe {
+  0%,
+  100% {
+    transform: scale(1);
+    opacity: 0.85;
+  }
+  50% {
+    transform: scale(1.08);
+    opacity: 1;
+  }
+}
+
+.animate-breathe {
+  animation: breathe 2.2s ease-in-out infinite;
+}

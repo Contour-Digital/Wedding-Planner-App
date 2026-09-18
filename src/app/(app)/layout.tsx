@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import Image from "next/image";
 import { useEffect, useState } from "react";
 import { Sidebar } from "@/components/nav/Sidebar";
 import { BottomNav } from "@/components/nav/BottomNav";
@@ -30,10 +31,14 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
     // was cached the last time one loaded successfully, if any.
     const label = wedding ? `${wedding.partner_1} & ${wedding.partner_2}` : cachedLabel;
     return (
-      <div className="flex min-h-screen flex-col items-center justify-center gap-3 text-sm text-muted">
-        <div
-          className="h-8 w-8 animate-spin rounded-full border-2 border-line border-t-primaryStrong"
-          aria-hidden="true"
+      <div className="flex min-h-screen flex-col items-center justify-center gap-4 text-sm text-muted">
+        <Image
+          src="/icon-192.png"
+          alt=""
+          width={80}
+          height={80}
+          priority
+          className="animate-breathe rounded-2xl shadow-lg"
         />
         <p>{label ? `Loading ${label}'s wedding…` : "Loading your wedding…"}</p>
       </div>
