@@ -1,15 +1,18 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { Sidebar } from "@/components/nav/Sidebar";
 import { BottomNav } from "@/components/nav/BottomNav";
 import { SwipeNav } from "@/components/nav/SwipeNav";
-import { useWedding } from "@/lib/wedding/WeddingProvider";
+import { useWedding, getCachedWeddingLabel } from "@/lib/wedding/WeddingProvider";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
   const { user, wedding, loading, weddingIds } = useWedding();
   const router = useRouter();
+  // Read once on mount rather than every render — this only ever needs to
+  // reflect whatever was cached before this page load started.
+  const [cachedLabel] = useState(getCachedWeddingLabel);
 
   useEffect(() => {
     if (loading) return;
@@ -21,9 +24,18 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
   }, [loading, user, weddingIds, router]);
 
   if (loading || !user || !wedding) {
+    // wedding.partner_1/partner_2 themselves aren't available yet here —
+    // this is exactly the screen shown while that fetch is still in
+    // flight — so the greeting falls back to whichever wedding's name
+    // was cached the last time one loaded successfully, if any.
+    const label = wedding ? `${wedding.partner_1} & ${wedding.partner_2}` : cachedLabel;
     return (
-      <div className="flex min-h-screen items-center justify-center text-sm text-muted">
-        Loading your wedding…
+      <div className="flex min-h-screen flex-col items-center justify-center gap-3 text-sm text-muted">
+        <div
+          className="h-8 w-8 animate-spin rounded-full border-2 border-line border-t-primaryStrong"
+          aria-hidden="true"
+        />
+        <p>{label ? `Loading ${label}'s wedding…` : "Loading your wedding…"}</p>
       </div>
     );
   }

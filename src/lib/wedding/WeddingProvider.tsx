@@ -19,6 +19,22 @@ const WeddingContext = createContext<WeddingContextValue | undefined>(undefined)
 
 const ACTIVE_WEDDING_KEY = "wedding-planner:active-wedding-id";
 
+// Lets the loading screen (src/app/(app)/layout.tsx) greet the couple by
+// name even on a cold load, before the fresh fetch below has resolved —
+// there's no wedding to read a name from yet at that point, only whatever
+// was cached here the last time one loaded successfully. Read via
+// getCachedWeddingLabel() below rather than this key directly.
+const WEDDING_LABEL_KEY = "wedding-planner:last-wedding-label";
+
+export function getCachedWeddingLabel(): string | null {
+  if (typeof window === "undefined") return null;
+  try {
+    return window.localStorage.getItem(WEDDING_LABEL_KEY);
+  } catch {
+    return null;
+  }
+}
+
 export function WeddingProvider({ children }: { children: React.ReactNode }) {
   const supabase = useMemo(() => createClient(), []);
   const [user, setUser] = useState<User | null>(null);
@@ -79,6 +95,15 @@ export function WeddingProvider({ children }: { children: React.ReactNode }) {
     setWedding(weddingRow ?? null);
     setRole(memberships?.find((m) => m.wedding_id === activeId)?.role as WeddingRole);
     setLoading(false);
+
+    if (weddingRow) {
+      try {
+        window.localStorage.setItem(WEDDING_LABEL_KEY, `${weddingRow.partner_1} & ${weddingRow.partner_2}`);
+      } catch {
+        // Ignore — worst case, the next cold load's spinner just says
+        // "your wedding" instead of the couple's names.
+      }
+    }
   }, [supabase]);
 
   useEffect(() => {
