@@ -116,6 +116,45 @@ export async function POST(request: Request) {
   const siteUrl = process.env.NEXT_PUBLIC_SITE_URL ?? new URL(request.url).origin;
   const redirectTo = `${siteUrl}/onboarding`;
   const resendApiKey = process.env.RESEND_API_KEY;
+  const inviterLabel =
+    wedding?.partner_1 && wedding?.partner_2 ? `${wedding.partner_1} & ${wedding.partner_2}` : "the couple";
+  const replyTo = wedding?.joint_email || user.email || undefined;
+
+  // Sends our own branded email (with a custom Reply-To) through Resend for
+  // whichever Supabase action link generated it — "invite" for a brand-new
+  // signup, "magiclink" for the resend-to-an-existing-unconfirmed-user case
+  // below. Either way it's the same email to the invitee.
+  async function sendActionLinkViaResend(actionLink: string): Promise<{ ok: boolean; error: string | null }> {
+    const fromAddress = process.env.RESEND_FROM_EMAIL || "Wedding Planner <onboarding@resend.dev>";
+    const resendRes = await fetch("https://api.resend.com/emails", {
+      method: "POST",
+      headers: { Authorization: `Bearer ${resendApiKey}`, "Content-Type": "application/json" },
+      body: JSON.stringify({
+        from: fromAddress,
+        to: email,
+        reply_to: replyTo,
+        subject: `You're invited to help plan ${inviterLabel}'s wedding`,
+        html: `
+          <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 480px; margin: 0 auto;">
+            <h2 style="color: #2a2e28;">You're invited! 💍</h2>
+            <p style="color: #2a2e28;">${inviterLabel} has invited you to help plan their wedding.</p>
+            <p>
+              <a href="${actionLink}"
+                 style="display: inline-block; background: #9caf98; color: #2a2e28; padding: 12px 20px;
+                        border-radius: 10px; text-decoration: none; font-weight: 600;">
+                Accept invite
+              </a>
+            </p>
+            <p style="color: #6f7a6b; font-size: 13px;">This link will sign you in and get you set up.</p>
+          </div>
+        `,
+      }),
+    });
+
+    if (resendRes.ok) return { ok: true, error: null };
+    const resendError = await resendRes.json().catch(() => null);
+    return { ok: false, error: resendError?.message ?? "Resend couldn't send the invite email." };
+  }
 
   let invitedUserId: string | null = null;
   let emailSent = false;
@@ -134,42 +173,9 @@ export async function POST(request: Request) {
     firstError = linkError?.message ?? null;
 
     if (invitedUserId && linkData?.properties?.action_link) {
-      const inviterLabel =
-        wedding?.partner_1 && wedding?.partner_2 ? `${wedding.partner_1} & ${wedding.partner_2}` : "the couple";
-      const replyTo = wedding?.joint_email || user.email || undefined;
-      const fromAddress = process.env.RESEND_FROM_EMAIL || "Wedding Planner <onboarding@resend.dev>";
-
-      const resendRes = await fetch("https://api.resend.com/emails", {
-        method: "POST",
-        headers: { Authorization: `Bearer ${resendApiKey}`, "Content-Type": "application/json" },
-        body: JSON.stringify({
-          from: fromAddress,
-          to: email,
-          reply_to: replyTo,
-          subject: `You're invited to help plan ${inviterLabel}'s wedding`,
-          html: `
-            <div style="font-family: system-ui, -apple-system, sans-serif; max-width: 480px; margin: 0 auto;">
-              <h2 style="color: #2a2e28;">You're invited! 💍</h2>
-              <p style="color: #2a2e28;">${inviterLabel} has invited you to help plan their wedding.</p>
-              <p>
-                <a href="${linkData.properties.action_link}"
-                   style="display: inline-block; background: #9caf98; color: #2a2e28; padding: 12px 20px;
-                          border-radius: 10px; text-decoration: none; font-weight: 600;">
-                  Accept invite
-                </a>
-              </p>
-              <p style="color: #6f7a6b; font-size: 13px;">This link will sign you in and get you set up.</p>
-            </div>
-          `,
-        }),
-      });
-
-      if (resendRes.ok) {
-        emailSent = true;
-      } else {
-        const resendError = await resendRes.json().catch(() => null);
-        firstError = resendError?.message ?? "Resend couldn't send the invite email.";
-      }
+      const sent = await sendActionLinkViaResend(linkData.properties.action_link);
+      emailSent = sent.ok;
+      if (!sent.ok) firstError = sent.error;
     }
   } else {
     // No Resend key configured yet — fall back to Supabase's own built-in
@@ -181,16 +187,69 @@ export async function POST(request: Request) {
   }
 
   if (!invitedUserId) {
-    // Most common non-fatal case: they already have an account with us. Look
-    // them up by email so we can still grant access directly, without
-    // re-sending a signup email to someone who can already just sign in.
+    // generateLink/inviteUserByEmail with type "invite" only succeeds for a
+    // brand-new email — an invite already creates the auth.users row the
+    // instant it's sent (before the invitee ever clicks anything), so it
+    // errors identically here whether this address belongs to a fully
+    // active member (nothing to send, they can just sign in) or someone who
+    // was invited before but never finished signing up (they need a fresh
+    // link — the old one may have expired or been lost). Telling those two
+    // cases apart is the point of what follows: silently reporting success
+    // with no email sent is only correct for the first one, and was
+    // swallowing every "Resend invite" click for someone stuck in the
+    // second.
     const { data: existingProfile } = await admin.from("profiles").select("id").eq("email", email).maybeSingle();
 
-    if (existingProfile?.id) {
-      invitedUserId = existingProfile.id;
+    if (!existingProfile?.id) {
+      return NextResponse.json({ error: firstError ?? "Couldn't send that invite." }, { status: 400 });
+    }
+
+    invitedUserId = existingProfile.id;
+
+    const { data: existingUserData } = await admin.auth.admin.getUserById(existingProfile.id);
+    const alreadyConfirmed = existingUserData?.user?.email_confirmed_at != null;
+
+    if (alreadyConfirmed) {
+      // Genuinely already active — they can just sign in, no email needed.
       emailSent = false;
     } else {
-      return NextResponse.json({ error: firstError ?? "Couldn't send that invite." }, { status: 400 });
+      // Stuck invite — give them a fresh working link. A magic link works
+      // for any existing user regardless of confirmation state, and
+      // clicking it both signs them in AND confirms their email as a side
+      // effect of proving mailbox ownership — functionally equivalent to
+      // finishing the original invite.
+      if (resendApiKey) {
+        const { data: linkData, error: linkError } = await admin.auth.admin.generateLink({
+          type: "magiclink",
+          email,
+          options: { redirectTo },
+        });
+        firstError = linkError?.message ?? firstError;
+
+        if (linkData?.properties?.action_link) {
+          const sent = await sendActionLinkViaResend(linkData.properties.action_link);
+          emailSent = sent.ok;
+          if (!sent.ok) firstError = sent.error;
+        }
+      } else {
+        // No Resend key: use Supabase's own mailer to send the magic link
+        // directly. shouldCreateUser: false — this email already has an
+        // account, this only ever signs them into it, never creates a
+        // duplicate.
+        const { error: otpError } = await admin.auth.signInWithOtp({
+          email,
+          options: { emailRedirectTo: redirectTo, shouldCreateUser: false },
+        });
+        emailSent = !otpError;
+        firstError = otpError?.message ?? firstError;
+      }
+
+      if (!emailSent) {
+        return NextResponse.json(
+          { error: firstError ?? "Couldn't resend that invite. Please try again." },
+          { status: 400 }
+        );
+      }
     }
   }
 
