@@ -15,6 +15,8 @@ export function WeddingSettingsForm() {
   const [form, setForm] = useState({
     partner_1: wedding?.partner_1 ?? "",
     partner_2: wedding?.partner_2 ?? "",
+    partner_1_phone: wedding?.partner_1_phone ?? "",
+    partner_2_phone: wedding?.partner_2_phone ?? "",
     wedding_date: wedding?.wedding_date ?? "",
     ceremony_time: wedding?.ceremony_time ?? "",
     venue: wedding?.venue ?? "",
@@ -95,6 +97,20 @@ export function WeddingSettingsForm() {
               value={form.partner_2}
               onChange={(e) => setForm({ ...form, partner_2: e.target.value })}
               required
+            />
+          </Field>
+          <Field label="Partner 1 phone" hint="Shown on the Contacts tab">
+            <Input
+              type="tel"
+              value={form.partner_1_phone}
+              onChange={(e) => setForm({ ...form, partner_1_phone: e.target.value })}
+            />
+          </Field>
+          <Field label="Partner 2 phone" hint="Shown on the Contacts tab">
+            <Input
+              type="tel"
+              value={form.partner_2_phone}
+              onChange={(e) => setForm({ ...form, partner_2_phone: e.target.value })}
             />
           </Field>
           <Field
