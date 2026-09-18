@@ -20,12 +20,26 @@ delete from public.wedding_members wm
 where not exists (select 1 from public.weddings w where w.id = wm.wedding_id);
 
 -- A membership row whose user_id points at a deleted/nonexistent profile
--- is bad data, but the membership itself (role, wedding_id) is still
--- meaningful — null the dangling reference rather than deleting the row,
--- the same way a not-yet-claimed invite already has a null user_id.
+-- is bad data. If it has an invited_email to fall back to, the membership
+-- itself (role, wedding_id) is still meaningful — null the dangling
+-- reference rather than deleting the row, the same way a not-yet-claimed
+-- invite already has a null user_id. But if invited_email is ALSO null
+-- (a fully-claimed membership whose user was later deleted, e.g. during a
+-- manual cleanup), nulling user_id would leave the row with no identity
+-- at all — the live database's wedding_members_identity check constraint
+-- (not defined in this repo; part of the base schema) requires at least
+-- one of user_id/invited_email to be set, and rejects that. Such a row is
+-- genuinely meaningless (nobody to resolve it to, nothing to re-invite),
+-- so it's deleted outright instead of updated.
+delete from public.wedding_members wm
+where wm.user_id is not null
+  and wm.invited_email is null
+  and not exists (select 1 from public.profiles p where p.id = wm.user_id);
+
 update public.wedding_members wm
 set user_id = null
 where wm.user_id is not null
+  and wm.invited_email is not null
   and not exists (select 1 from public.profiles p where p.id = wm.user_id);
 
 -- Postgres has no ADD CONSTRAINT IF NOT EXISTS (only indexes get that),

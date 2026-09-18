@@ -30,7 +30,7 @@ import { createClient as createServerClient } from "@/lib/supabase/server";
 const INVITE_RATE_LIMIT = 20;
 
 export async function POST(request: Request) {
-  let body: { weddingId?: string; email?: string; role?: string };
+  let body: { weddingId?: string; email?: string; role?: string; name?: string };
   try {
     body = await request.json();
   } catch {
@@ -39,6 +39,7 @@ export async function POST(request: Request) {
 
   const { weddingId, role } = body;
   const email = body.email?.trim().toLowerCase();
+  const name = body.name?.trim() || null;
 
   if (!weddingId || !email || !role) {
     return NextResponse.json({ error: "Missing wedding, email, or role." }, { status: 400 });
@@ -208,10 +209,21 @@ export async function POST(request: Request) {
   // present, just one is null) — a union where one branch omitted a key
   // previously tripped up Supabase's insert() typing (RejectExcessProperties
   // couldn't reconcile the two differently-shaped object types).
-  const memberPayload: { wedding_id: string; user_id: string | null; invited_email: string | null; role: string } =
-    invitedUserId
-      ? { wedding_id: weddingId, user_id: invitedUserId, invited_email: null, role }
-      : { wedding_id: weddingId, user_id: null, invited_email: email, role };
+  const memberPayload: {
+    wedding_id: string;
+    user_id: string | null;
+    invited_email: string | null;
+    role: string;
+    invited_name?: string;
+  } = invitedUserId
+    ? { wedding_id: weddingId, user_id: invitedUserId, invited_email: null, role }
+    : { wedding_id: weddingId, user_id: null, invited_email: email, role };
+
+  // Only set when actually provided — e.g. a resend that doesn't re-ask for
+  // a name shouldn't clobber whatever name was captured on the original invite.
+  if (name) {
+    memberPayload.invited_name = name;
+  }
 
   const { error: dbError } = existingMember
     ? await admin.from("wedding_members").update(memberPayload).eq("id", existingMember.id)

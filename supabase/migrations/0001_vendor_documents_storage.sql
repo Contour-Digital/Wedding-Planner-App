@@ -24,6 +24,16 @@
 -- segments, so for that convention:
 --   [1] = 'weddings'   [2] = wedding_id   [3] = 'vendors'
 --   [4] = vendor_id    [5] = 'documents'
+--
+-- Every CREATE POLICY below is preceded by DROP POLICY IF EXISTS —
+-- Postgres has no CREATE POLICY IF NOT EXISTS, so this stays safe to
+-- re-run (same fix applied to every later migration after hitting this on
+-- 0005/0006). The old SELECT policy name below was also renamed: at 67
+-- characters it exceeded Postgres's 63-byte identifier limit and was
+-- getting silently truncated to "...with vendor acces" in the actual
+-- database (visible in an RLS audit later in this project) — this drops
+-- that truncated name (Postgres truncates the same way on the DROP side,
+-- so the literal long string still matches it) and recreates it short.
 
 insert into storage.buckets (id, name, public)
 values ('vendor-documents', 'vendor-documents', false)
@@ -32,7 +42,9 @@ on conflict (id) do nothing;
 -- Read: owner/editor/viewer can see vendors at all (matches
 -- canSeeVendorsAndTasks() in src/lib/utils/permissions.ts — timeline_viewer
 -- never gets a vendors screen to view documents from in the first place).
-create policy "vendor-documents: readable by wedding members with vendor access"
+drop policy if exists "vendor-documents: readable by wedding members with vendor access" on storage.objects;
+drop policy if exists "vendor-documents: select by wedding members" on storage.objects;
+create policy "vendor-documents: select by wedding members"
 on storage.objects for select
 to authenticated
 using (
@@ -54,6 +66,7 @@ using (
 
 -- Write: only owner/editor (matches canEdit() — the same role gate the
 -- DocumentManager UI already uses for every other vendor mutation).
+drop policy if exists "vendor-documents: writable by wedding editors" on storage.objects;
 create policy "vendor-documents: writable by wedding editors"
 on storage.objects for insert
 to authenticated
@@ -74,6 +87,7 @@ with check (
   )
 );
 
+drop policy if exists "vendor-documents: updatable by wedding editors" on storage.objects;
 create policy "vendor-documents: updatable by wedding editors"
 on storage.objects for update
 to authenticated
@@ -98,6 +112,7 @@ with check (
   )
 );
 
+drop policy if exists "vendor-documents: deletable by wedding editors" on storage.objects;
 create policy "vendor-documents: deletable by wedding editors"
 on storage.objects for delete
 to authenticated

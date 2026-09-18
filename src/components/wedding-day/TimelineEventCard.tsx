@@ -5,7 +5,6 @@ import { createClient } from "@/lib/supabase/client";
 import { useWedding } from "@/lib/wedding/WeddingProvider";
 import { logActivity } from "@/lib/activity/logActivity";
 import { Card } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { formatTime } from "@/lib/utils/date";
 import { canEdit } from "@/lib/utils/permissions";
@@ -30,14 +29,13 @@ export function TimelineEventCard({
 }) {
   const { wedding, user, role } = useWedding();
   const supabase = createClient();
-  const isCeremony = event.managed_type === "ceremony";
   const privateNotes = "private_notes" in event ? event.private_notes : null;
   const editable = canEdit(role);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
 
   async function handleDelete() {
     setConfirmingDelete(false);
-    if (isCeremony || !wedding || !user) return;
+    if (!wedding || !user) return;
     await supabase.from("timeline_events").delete().eq("id", event.id);
     await logActivity(supabase, {
       weddingId: wedding.id,
@@ -54,10 +52,7 @@ export function TimelineEventCard({
     <Card className="flex items-start gap-3">
       <div className="w-16 shrink-0 pt-0.5 text-sm font-semibold text-primaryStrong">{formatTime(event.start_time)}</div>
       <div className="flex-1">
-        <div className="flex items-center gap-2">
-          <p className="text-sm font-medium">{event.title}</p>
-          {isCeremony && <Badge className="bg-primary/10 text-primaryStrong">Protected</Badge>}
-        </div>
+        <p className="text-sm font-medium">{event.title}</p>
         <div className="mt-1 flex flex-wrap gap-x-3 gap-y-0.5 text-xs text-muted">
           {event.duration_minutes && <span>{event.duration_minutes} min</span>}
           {event.location && <span>{event.location}</span>}
@@ -98,11 +93,9 @@ export function TimelineEventCard({
             <button onClick={onEdit} className="font-medium text-primaryStrong">
               Edit
             </button>
-            {!isCeremony && (
-              <button onClick={() => setConfirmingDelete(true)} className="font-medium text-danger">
-                Remove
-              </button>
-            )}
+            <button onClick={() => setConfirmingDelete(true)} className="font-medium text-danger">
+              Remove
+            </button>
           </div>
         </div>
       )}

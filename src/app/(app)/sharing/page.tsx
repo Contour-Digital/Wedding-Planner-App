@@ -8,6 +8,7 @@ import { createClient } from "@/lib/supabase/client";
 import { logActivity } from "@/lib/activity/logActivity";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { Badge } from "@/components/ui/Badge";
 import { Field, Input, Select } from "@/components/ui/Input";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { ROLE_DESCRIPTION, ROLE_LABEL, canManageMembers } from "@/lib/utils/permissions";
@@ -20,6 +21,7 @@ export default function SharingPage() {
   const { members, refresh } = useMembers(wedding?.id);
   const supabase = createClient();
 
+  const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<WeddingRole>("timeline_viewer");
   const [error, setError] = useState<string | null>(null);
@@ -36,7 +38,7 @@ export default function SharingPage() {
 
   // Shared by the "Invite someone" form and each pending row's "Resend
   // invite" button — same request, same success/error messages either way.
-  async function requestInvite(targetEmail: string, targetRole: WeddingRole) {
+  async function requestInvite(targetEmail: string, targetRole: WeddingRole, targetName?: string) {
     if (!wedding || !user) {
       return { ok: false, isError: true, message: "Still loading your wedding — try again in a moment." };
     }
@@ -45,7 +47,7 @@ export default function SharingPage() {
       const res = await fetch("/api/invite", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ weddingId: wedding.id, email: targetEmail, role: targetRole }),
+        body: JSON.stringify({ weddingId: wedding.id, email: targetEmail, role: targetRole, name: targetName }),
       });
       result = await res.json();
       if (!res.ok) {
@@ -80,11 +82,12 @@ export default function SharingPage() {
     setError(null);
     setNotice(null);
 
-    const result = await requestInvite(email.trim(), inviteRole);
+    const result = await requestInvite(email.trim(), inviteRole, name.trim() || undefined);
     if (result.isError) {
       setError(result.message);
     } else {
       setNotice(result.message);
+      setName("");
       setEmail("");
       refresh();
     }
@@ -131,6 +134,9 @@ export default function SharingPage() {
             immediately instead — no email needed.
           </p>
           <div className="flex flex-col gap-2 sm:flex-row">
+            <Field label="Name" hint="Optional — shown here before they accept">
+              <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Chloe" />
+            </Field>
             <Field label="Email">
               <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="mc@example.com" />
             </Field>
@@ -156,25 +162,31 @@ export default function SharingPage() {
           <h3 className="font-display text-lg font-semibold">People with access</h3>
           <div className="space-y-2">
             {members.map((m) => {
-              // A row is still pending — nobody has claimed it by signing up
-              // yet — exactly when it has no user_id. handle_new_user()
-              // clears invited_email and sets user_id together the moment
-              // the invitee's account is created, so the two are never both
-              // set at once; m.invited_email is guaranteed present here.
-              const pending = m.user_id === null && m.invited_email;
+              const displayName = m.profile?.full_name ?? m.invited_name ?? m.invited_email ?? "Pending invite";
+              const displayEmail = m.profile?.email ?? m.invited_email;
+              // The email to resend to: invited_email is only ever set
+              // before someone's account exists — the moment /api/invite
+              // creates it, the trigger clears invited_email and sets
+              // user_id, well before they've actually confirmed — so once
+              // that's happened, fall back to their (still unconfirmed)
+              // account's own email via the profile join.
+              const resendTargetEmail = m.invited_email ?? m.profile?.email ?? null;
+              const isOwner = m.role === "owner";
               return (
                 <div key={m.id} className="rounded-xl border border-line p-3">
                   <div className="flex items-center justify-between gap-2">
                     <div>
-                      <p className="text-sm font-medium">
-                        {m.profile?.full_name ?? m.invited_email ?? "Pending invite"}
-                      </p>
-                      <p className="text-xs text-muted">
-                        {m.profile?.email ?? m.invited_email}
-                        {pending ? " · pending" : ""}
-                      </p>
+                      <div className="flex flex-wrap items-center gap-1.5">
+                        <p className="text-sm font-medium">{displayName}</p>
+                        {!isOwner && (
+                          <Badge className={m.confirmed ? "bg-good/15 text-good" : "bg-warn/15 text-warn"}>
+                            {m.confirmed ? "Active" : "Invited"}
+                          </Badge>
+                        )}
+                      </div>
+                      {displayEmail && <p className="text-xs text-muted">{displayEmail}</p>}
                     </div>
-                    {m.role === "owner" ? (
+                    {isOwner ? (
                       <span className="text-xs font-medium text-muted">{ROLE_LABEL.owner}</span>
                     ) : (
                       <div className="flex items-center gap-2">
@@ -189,9 +201,9 @@ export default function SharingPage() {
                             </option>
                           ))}
                         </Select>
-                        {pending && (
+                        {!m.confirmed && resendTargetEmail && (
                           <button
-                            onClick={() => resendInvite(m.id, m.invited_email as string, m.role)}
+                            onClick={() => resendInvite(m.id, resendTargetEmail, m.role)}
                             disabled={resendingMemberId === m.id}
                             className="whitespace-nowrap text-xs font-medium text-primaryStrong disabled:opacity-50"
                           >
@@ -221,7 +233,7 @@ export default function SharingPage() {
         title="Remove access"
         message={
           removingMember
-            ? `Remove ${removingMember.profile?.full_name ?? removingMember.invited_email ?? "this person"}'s access?`
+            ? `Remove ${removingMember.profile?.full_name ?? removingMember.invited_name ?? removingMember.invited_email ?? "this person"}'s access?`
             : ""
         }
         onConfirm={() => removingMember && removeMember(removingMember.id)}

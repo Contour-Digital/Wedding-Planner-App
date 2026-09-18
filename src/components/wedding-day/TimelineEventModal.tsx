@@ -25,7 +25,6 @@ export function TimelineEventModal({
 }) {
   const { wedding, user } = useWedding();
   const supabase = createClient();
-  const isCeremony = event?.managed_type === "ceremony";
 
   const [group, setGroup] = useState<TimelineGroup>(event?.group_name ?? "other");
   const [title, setTitle] = useState(event?.title ?? "");
@@ -77,10 +76,10 @@ export function TimelineEventModal({
     <Modal open={open} onClose={onClose} title={event ? "Edit run-sheet item" : "Add run-sheet item"}>
       <div className="space-y-4">
         <Field label="Event name">
-          <Input value={title} onChange={(e) => setTitle(e.target.value)} disabled={isCeremony} />
+          <Input value={title} onChange={(e) => setTitle(e.target.value)} />
         </Field>
         <Field label="Group">
-          <Select value={group} onChange={(e) => setGroup(e.target.value as TimelineGroup)} disabled={isCeremony}>
+          <Select value={group} onChange={(e) => setGroup(e.target.value as TimelineGroup)}>
             {TIMELINE_GROUP_OPTIONS.map((g) => (
               <option key={g} value={g}>
                 {TIMELINE_GROUP_LABEL[g]}
@@ -88,7 +87,11 @@ export function TimelineEventModal({
             ))}
           </Select>
         </Field>
-        <div className="grid grid-cols-2 gap-3">
+        {/* min-w-0 on each grid item — without it, a native type="time"
+            input's own intrinsic width can push its column wider than the
+            other, so the two fields stop lining up as the equal 1fr/1fr
+            split grid-cols-2 is supposed to give them. */}
+        <div className="grid grid-cols-2 gap-3 [&>*]:min-w-0">
           <Field label="Start time">
             <Input type="time" value={startTime} onChange={(e) => setStartTime(e.target.value)} />
           </Field>
