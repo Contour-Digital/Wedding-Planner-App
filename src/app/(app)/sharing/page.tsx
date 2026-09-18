@@ -30,7 +30,16 @@ export default function SharingPage() {
   const [generatedMessage, setGeneratedMessage] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
-  const [rowStatus, setRowStatus] = useState<{ memberId: string; message: string } | null>(null);
+  // The generated message text for whichever row was just (re)invited —
+  // kept and shown regardless of whether the auto-copy below actually
+  // worked, since navigator.clipboard.writeText() commonly fails silently
+  // once a network request has happened first: most browsers only allow it
+  // within a brief window right after a real click, and the await fetch()
+  // above already used that window up by the time this runs.
+  const [rowMessage, setRowMessage] = useState<{ memberId: string; text: string; autoCopied: boolean } | null>(
+    null
+  );
+  const [rowError, setRowError] = useState<{ memberId: string; message: string } | null>(null);
 
   const canManage = canManageMembers(role);
   const removingMember = members.find((m) => m.id === removingMemberId) ?? null;
@@ -85,8 +94,12 @@ export default function SharingPage() {
       setNotice(`${email.trim()} already has an account — they now have access, no message needed.`);
     } else if (result.message) {
       setGeneratedMessage(result.message);
-      await copyToClipboard(result.message);
-      setNotice("Message copied — paste it into a text, WhatsApp, email, however you like.");
+      const copied = await copyToClipboard(result.message);
+      setNotice(
+        copied
+          ? "Message copied — paste it into a text, WhatsApp, email, however you like."
+          : "Couldn't auto-copy — select the text below and copy it manually, or use the Copy button."
+      );
     }
     setName("");
     setEmail("");
@@ -96,10 +109,14 @@ export default function SharingPage() {
 
   // Reuses the same create/reset endpoint with this row's existing details
   // — always generates a fresh password (nothing from the original is
-  // stored anywhere to hand out again), so this doubles as "resend".
+  // stored anywhere to hand out again), so this doubles as "resend". The
+  // message is always shown afterward, not just on a failed auto-copy —
+  // see the rowMessage state comment for why the auto-copy often silently
+  // fails here specifically (it runs right after an awaited fetch).
   async function copyMemberMessage(memberId: string, invitedEmail: string, memberRole: WeddingRole, invitedName: string | null) {
     if (!wedding) return;
-    setRowStatus({ memberId, message: "Generating…" });
+    setRowError(null);
+    setRowMessage(null);
     try {
       const res = await fetch("/api/invite", {
         method: "POST",
@@ -113,14 +130,14 @@ export default function SharingPage() {
       });
       const result = await res.json();
       if (!res.ok || !result.message) {
-        setRowStatus({ memberId, message: result.error ?? "Couldn't generate a new invite message." });
+        setRowError({ memberId, message: result.error ?? "Couldn't generate a new invite message." });
         return;
       }
-      await copyToClipboard(result.message);
-      setRowStatus({ memberId, message: "Message copied! (a new password was generated)" });
+      const copied = await copyToClipboard(result.message);
+      setRowMessage({ memberId, text: result.message, autoCopied: copied });
       refresh();
     } catch {
-      setRowStatus({ memberId, message: "Couldn't reach the server — check your connection and try again." });
+      setRowError({ memberId, message: "Couldn't reach the server — check your connection and try again." });
     }
   }
 
@@ -238,8 +255,25 @@ export default function SharingPage() {
                       </div>
                     )}
                   </div>
-                  {rowStatus?.memberId === m.id && (
-                    <p className="mt-2 break-all text-xs text-good">{rowStatus.message}</p>
+                  {rowError?.memberId === m.id && <p className="mt-2 text-xs text-danger">{rowError.message}</p>}
+                  {rowMessage?.memberId === m.id && (
+                    <div className="mt-2 space-y-1.5">
+                      <p className={`text-xs ${rowMessage.autoCopied ? "text-good" : "text-warn"}`}>
+                        {rowMessage.autoCopied
+                          ? "Message copied! (a new password was generated)"
+                          : "New password generated — couldn't auto-copy, select the text below or tap Copy."}
+                      </p>
+                      <Textarea readOnly rows={3} value={rowMessage.text} onFocus={(e) => e.target.select()} />
+                      <Button
+                        variant="secondary"
+                        onClick={async () => {
+                          const copied = await copyToClipboard(rowMessage.text);
+                          setRowMessage({ ...rowMessage, autoCopied: copied });
+                        }}
+                      >
+                        Copy
+                      </Button>
+                    </div>
                   )}
                 </div>
               );
