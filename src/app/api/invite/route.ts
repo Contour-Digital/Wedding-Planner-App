@@ -164,7 +164,15 @@ export async function POST(request: Request) {
     const targetUserId = existingAuthUser?.id ?? existingMember?.user_id ?? null;
 
     if (targetUserId) {
-      const { error: updateError } = await admin.auth.admin.updateUserById(targetUserId, { password });
+      // email_confirm: true here too, not just on createUser below — this
+      // account might predate generated-password invites (created via the
+      // old email-link flow, or any other path) and still be sitting on
+      // email_confirmed_at: null, which makes signInWithPassword refuse it
+      // with "Email not confirmed" even with the right password.
+      const { error: updateError } = await admin.auth.admin.updateUserById(targetUserId, {
+        password,
+        email_confirm: true,
+      });
       if (updateError) return NextResponse.json({ error: updateError.message }, { status: 400 });
       invitedUserId = targetUserId;
     } else {
@@ -183,7 +191,10 @@ export async function POST(request: Request) {
         // instead of giving up.
         const fallbackUser = await findAuthUserByEmail(admin, email);
         if (fallbackUser) {
-          const { error: updateError } = await admin.auth.admin.updateUserById(fallbackUser.id, { password });
+          const { error: updateError } = await admin.auth.admin.updateUserById(fallbackUser.id, {
+            password,
+            email_confirm: true,
+          });
           if (updateError) return NextResponse.json({ error: updateError.message }, { status: 400 });
           invitedUserId = fallbackUser.id;
         } else {
