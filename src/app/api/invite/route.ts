@@ -264,19 +264,19 @@ export async function POST(request: Request) {
     ? await memberLookup.eq("user_id", invitedUserId).maybeSingle()
     : await memberLookup.eq("invited_email", email).maybeSingle();
 
-  // Both branches list the exact same keys (user_id/invited_email always
-  // present, just one is null) — a union where one branch omitted a key
-  // previously tripped up Supabase's insert() typing (RejectExcessProperties
-  // couldn't reconcile the two differently-shaped object types).
+  // invited_email always stays set to the target address, even once
+  // user_id is also known — it's the only permanent record of who an
+  // invite actually went to (see migration 0015: the trigger used to null
+  // it out the moment an invite was claimed, which meant "Resend invite"
+  // had nothing left to send to if anything downstream ever went wrong,
+  // e.g. a missing profiles row).
   const memberPayload: {
     wedding_id: string;
     user_id: string | null;
-    invited_email: string | null;
+    invited_email: string;
     role: string;
     invited_name?: string;
-  } = invitedUserId
-    ? { wedding_id: weddingId, user_id: invitedUserId, invited_email: null, role }
-    : { wedding_id: weddingId, user_id: null, invited_email: email, role };
+  } = { wedding_id: weddingId, user_id: invitedUserId, invited_email: email, role };
 
   // Only set when actually provided — e.g. a resend that doesn't re-ask for
   // a name shouldn't clobber whatever name was captured on the original invite.
