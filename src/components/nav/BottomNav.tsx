@@ -7,19 +7,21 @@ import { ALL_NAV_ITEMS, PRIMARY_NAV_KEYS } from "./NavItems";
 import { useWedding } from "@/lib/wedding/WeddingProvider";
 import { visibleNavSections } from "@/lib/utils/permissions";
 
-// Mobile-first bottom tab bar. Always the same 5 primary sections — Vendors,
-// Sharing, Activity and Settings live in the hamburger menu (MobileMenu)
-// instead, so this bar never gets cramped and stays a fixed, memorable
-// layout. A role that can't see one of these (e.g. Timeline Only only gets
-// Wedding Day) simply gets fewer tabs rather than substituting something
-// else in.
+// Mobile-first bottom tab bar. Always the same 5 primary sections for
+// everyone else — Vendors, Sharing, Activity and Settings live in the
+// hamburger menu (MobileMenu) instead, so this bar never gets cramped and
+// stays a fixed, memorable layout. Timeline Only has so few sections to
+// begin with (Dashboard, Wedding Day, Contacts) that all of them fit
+// directly in the bar instead, rather than burying Contacts a tap deeper
+// in the hamburger menu the way it is for every other role.
+const TIMELINE_ONLY_PRIMARY_NAV_KEYS = ["dashboard", "wedding-day", "contacts"];
+
 export function BottomNav() {
   const pathname = usePathname();
   const { role } = useWedding();
   const visible = visibleNavSections(role);
-  const items = ALL_NAV_ITEMS.filter(
-    (item) => PRIMARY_NAV_KEYS.includes(item.key) && visible.includes(item.key)
-  );
+  const primaryKeys = role === "timeline_viewer" ? TIMELINE_ONLY_PRIMARY_NAV_KEYS : PRIMARY_NAV_KEYS;
+  const items = ALL_NAV_ITEMS.filter((item) => primaryKeys.includes(item.key) && visible.includes(item.key));
 
   return (
     // pb includes the safe-area inset so the bar (and its labels) clear the
