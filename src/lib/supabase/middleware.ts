@@ -33,7 +33,12 @@ export async function updateSession(request: NextRequest) {
   const isPublicRoute =
     request.nextUrl.pathname.startsWith("/login") ||
     request.nextUrl.pathname.startsWith("/signup") ||
-    request.nextUrl.pathname.startsWith("/auth");
+    request.nextUrl.pathname.startsWith("/auth") ||
+    // Invite links are opened by people who don't have an account (or
+    // aren't signed in) yet — both the landing page and the API it calls
+    // to read/claim the invite need to be reachable before auth.
+    request.nextUrl.pathname.startsWith("/invite") ||
+    request.nextUrl.pathname.startsWith("/api/invite-link");
 
   if (!user && !isPublicRoute) {
     const redirectUrl = request.nextUrl.clone();
