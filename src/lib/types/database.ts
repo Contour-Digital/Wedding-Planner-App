@@ -48,6 +48,8 @@ export interface Wedding {
   id: string;
   partner_1: string;
   partner_2: string;
+  partner_1_phone: string | null;
+  partner_2_phone: string | null;
   wedding_date: string | null;
   ceremony_time: string | null;
   venue: string | null;
@@ -110,6 +112,36 @@ export interface VendorContact {
   phone: string | null;
   email: string | null;
   created_at: string;
+  // Whether this specific contact should also appear on the Contacts tab's
+  // day-of key contacts list — a vendor can have several contacts and only
+  // some (e.g. the on-the-day coordinator, not the sales rep) belong there.
+  show_in_contacts: boolean;
+}
+
+export interface KeyContact {
+  id: string;
+  wedding_id: string;
+  role: string | null;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  sort_order: number;
+  created_at: string;
+}
+
+// From the day_of_vendor_contacts view (migration 0017) — vendor_contacts
+// rows with show_in_contacts = true, joined with the vendor's own name.
+// Readable by every wedding member including Timeline Only, independent of
+// the base vendor_contacts/vendors tables' own (more restrictive) RLS.
+export interface DayOfVendorContact {
+  id: string;
+  vendor_id: string;
+  vendor_name: string;
+  role: string | null;
+  name: string;
+  phone: string | null;
+  email: string | null;
+  wedding_id: string;
 }
 
 export interface VendorDocument {

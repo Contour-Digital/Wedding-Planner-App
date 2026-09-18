@@ -129,7 +129,7 @@ export default function VendorDetailPage() {
           </Card>
         )}
 
-        <ContactManager vendorId={vendor.id} contacts={vendor.contacts} onChanged={refresh} />
+        <ContactManager vendorId={vendor.id} contacts={vendor.contacts} editable={editable} onChanged={refresh} />
         <DocumentManager
           weddingId={wedding!.id}
           vendorId={vendor.id}

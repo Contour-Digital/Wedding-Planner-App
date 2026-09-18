@@ -17,6 +17,11 @@ export default function TasksPage() {
   const [filter, setFilter] = useState<Filter>("open");
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
+  // Bumped on every open so TaskModal remounts with a fresh key each time —
+  // its form fields are only seeded from `task` on mount, so without this,
+  // reopening it for a different task (or for "add" after an edit) would
+  // keep showing whatever was loaded the first time the modal ever opened.
+  const [modalKey, setModalKey] = useState(0);
 
   const filtered = tasks.filter((t) => {
     if (filter === "open") return !t.completed;
@@ -26,11 +31,13 @@ export default function TasksPage() {
 
   function openAdd() {
     setEditingTask(null);
+    setModalKey((k) => k + 1);
     setModalOpen(true);
   }
 
   function openEdit(task: Task) {
     setEditingTask(task);
+    setModalKey((k) => k + 1);
     setModalOpen(true);
   }
 
@@ -63,7 +70,7 @@ export default function TasksPage() {
         </div>
       </div>
 
-      <TaskModal open={modalOpen} onClose={() => setModalOpen(false)} task={editingTask} onSaved={refresh} />
+      <TaskModal key={modalKey} open={modalOpen} onClose={() => setModalOpen(false)} task={editingTask} onSaved={refresh} />
     </div>
   );
 }

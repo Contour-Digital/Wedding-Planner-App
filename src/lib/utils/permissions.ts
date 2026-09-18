@@ -10,7 +10,7 @@ export const ROLE_LABEL: Record<WeddingRole, string> = {
 export const ROLE_DESCRIPTION: Record<WeddingRole, string> = {
   owner: "Can see and edit everything, and manage who has access.",
   editor: "Can see and edit everything.",
-  timeline_viewer: "Can only view the shared Wedding Day run sheet. No financials, no private notes.",
+  timeline_viewer: "Can only view the shared Wedding Day run sheet and Contacts. No financials, no private notes.",
   viewer: "Can view planning information but cannot make changes. No financial data.",
 };
 
@@ -38,10 +38,10 @@ export function isTimelineOnly(role: WeddingRole | null | undefined) {
 // database RLS policies, which are the real enforcement layer.
 export function visibleNavSections(role: WeddingRole | null | undefined): string[] {
   if (role === "timeline_viewer") {
-    return ["wedding-day"];
+    return ["dashboard", "wedding-day", "contacts"];
   }
   if (role === "viewer") {
-    return ["dashboard", "tasks", "vendors", "wedding-day", "inspiration", "activity"];
+    return ["dashboard", "tasks", "vendors", "wedding-day", "inspiration", "contacts", "activity"];
   }
   // owner / editor
   return [
@@ -51,6 +51,7 @@ export function visibleNavSections(role: WeddingRole | null | undefined): string
     "vendors",
     "wedding-day",
     "inspiration",
+    "contacts",
     "sharing",
     "activity",
     "settings",

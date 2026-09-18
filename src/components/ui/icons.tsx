@@ -123,3 +123,11 @@ export function ChevronDownIcon(props: IconProps) {
     </svg>
   );
 }
+
+export function PhoneIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M6.5 3.5h2.8l1.4 3.7-1.9 1.6a11 11 0 0 0 4.4 4.4l1.6-1.9 3.7 1.4v2.8a1.5 1.5 0 0 1-1.6 1.5A15 15 0 0 1 5 5.1a1.5 1.5 0 0 1 1.5-1.6Z" />
+    </svg>
+  );
+}
