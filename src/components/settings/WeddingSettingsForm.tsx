@@ -56,7 +56,7 @@ export function WeddingSettingsForm() {
           weddingId: wedding!.id,
           userId: user.id,
           actionType: "settings.ceremony_time_changed",
-          description: `Ceremony time changed to ${form.ceremony_time || "unset"}. The Wedding Day run sheet has been updated automatically.`,
+          description: `Ceremony time changed to ${form.ceremony_time || "unset"}.`,
           entityType: "wedding",
           entityId: wedding!.id,
         });
@@ -121,7 +121,7 @@ export function WeddingSettingsForm() {
               onChange={(e) => setForm({ ...form, wedding_date: e.target.value })}
             />
           </Field>
-          <Field label="Ceremony time" hint="Drives the Ceremony item on the Wedding Day run sheet">
+          <Field label="Ceremony time" hint="For your own reference — set the Wedding Day run sheet's Ceremony time separately, on that tab">
             <Input
               type="time"
               value={form.ceremony_time ?? ""}
