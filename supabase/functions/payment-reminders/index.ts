@@ -1,12 +1,14 @@
 // Daily payment-due reminder emails.
 //
 // Queries expense_instalments_due_for_reminder() (see
-// supabase/migrations/0002_payment_reminder_tracking.sql) for unpaid
-// instalments whose due_date falls within their own reminder_days window
-// and that haven't had a reminder sent today, emails the wedding owner
-// (and joint_email, if set) via Resend — same provider and HTML-email
-// pattern as src/app/api/invite/route.ts — and stamps last_reminder_sent_at
-// on each one it successfully sends, so a re-run today is a no-op for it.
+// supabase/migrations/0002_payment_reminder_tracking.sql, extended by
+// 0019_payment_reminders_include_partner_emails.sql) for unpaid instalments
+// whose due_date falls within their own reminder_days window and that
+// haven't had a reminder sent today, emails the wedding owner (and
+// joint_email/partner_1_email/partner_2_email, wherever set) via Resend —
+// same provider and HTML-email pattern as src/app/api/invite/route.ts — and
+// stamps last_reminder_sent_at on each one it successfully sends, so a
+// re-run today is a no-op for it.
 //
 // Deploy: supabase functions deploy payment-reminders
 // Secrets: supabase secrets set RESEND_API_KEY=... [RESEND_FROM_EMAIL=...]
@@ -31,6 +33,8 @@ interface DueInstalment {
   currency: string | null;
   owner_email: string | null;
   joint_email: string | null;
+  partner_1_email: string | null;
+  partner_2_email: string | null;
 }
 
 function formatCurrency(amount: number, currency: string) {
@@ -107,7 +111,13 @@ Deno.serve(async (req) => {
   const failures: string[] = [];
 
   for (const row of (due ?? []) as DueInstalment[]) {
-    const recipients = Array.from(new Set([row.owner_email, row.joint_email].filter((e): e is string => !!e)));
+    const recipients = Array.from(
+      new Set(
+        [row.owner_email, row.joint_email, row.partner_1_email, row.partner_2_email].filter(
+          (e): e is string => !!e
+        )
+      )
+    );
     if (recipients.length === 0) {
       skipped += 1;
       continue;

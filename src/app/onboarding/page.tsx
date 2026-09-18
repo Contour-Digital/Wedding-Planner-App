@@ -341,7 +341,7 @@ export default function OnboardingPage() {
             {!emailValid && <p className="text-sm text-danger">That email doesn&apos;t look right.</p>}
             <Field
               label="Joint email"
-              hint="Optional — replies to invite emails you send from Sharing go here instead of to you personally"
+              hint="Optional — a shared inbox for the two of you; also gets payment due reminders, alongside your own email"
             >
               <Input
                 type="email"

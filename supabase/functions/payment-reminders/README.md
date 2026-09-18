@@ -1,8 +1,8 @@
 # payment-reminders
 
 Daily digest of upcoming instalment payments, emailed to the wedding owner
-(and `joint_email`, if set) via Resend. See `index.ts` for what it queries
-and sends.
+(and `joint_email`/`partner_1_email`/`partner_2_email`, wherever set) via
+Resend. See `index.ts` for what it queries and sends.
 
 ## Deploy
 
