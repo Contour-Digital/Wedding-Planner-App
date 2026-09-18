@@ -1,5 +1,6 @@
 import type { ComponentType } from "react";
 import {
+  BellIcon,
   CalendarIcon,
   ChecklistIcon,
   ClockIcon,
@@ -37,4 +38,5 @@ export const ALL_NAV_ITEMS: NavItem[] = [
   { key: "sharing", href: "/sharing", label: "Sharing", icon: LinkIcon },
   { key: "activity", href: "/activity", label: "Activity", icon: ClockIcon },
   { key: "settings", href: "/settings", label: "Settings", icon: SettingsIcon },
+  { key: "notifications", href: "/notifications", label: "Notifications", icon: BellIcon },
 ];

@@ -52,6 +52,19 @@ export default function InviteLinkPage() {
     window.location.href = "/dashboard";
   }
 
+  // Fire-and-forget — this is the one moment (first-ever sign-in via an
+  // invite) that counts as "member joined"; see the route's own comment
+  // for why no separate dedupe is needed here.
+  function notifyMemberJoined() {
+    fetch("/api/notify/member-joined", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ memberId: params.id }),
+    }).catch(() => {
+      // Best-effort — never blocks getting the new member to their dashboard.
+    });
+  }
+
   async function handleSignIn(e: React.FormEvent) {
     e.preventDefault();
     if (!info?.invitedEmail) return;
@@ -70,6 +83,7 @@ export default function InviteLinkPage() {
       setSubmitting(false);
       return;
     }
+    notifyMemberJoined();
     goToDashboard();
   }
 
@@ -91,6 +105,7 @@ export default function InviteLinkPage() {
         setSubmitting(false);
         return;
       }
+      notifyMemberJoined();
       goToDashboard();
     } catch {
       setError("Couldn't reach the server — check your connection and try again.");

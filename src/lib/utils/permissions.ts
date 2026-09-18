@@ -38,10 +38,10 @@ export function isTimelineOnly(role: WeddingRole | null | undefined) {
 // database RLS policies, which are the real enforcement layer.
 export function visibleNavSections(role: WeddingRole | null | undefined): string[] {
   if (role === "timeline_viewer") {
-    return ["dashboard", "wedding-day", "contacts"];
+    return ["dashboard", "wedding-day", "contacts", "notifications"];
   }
   if (role === "viewer") {
-    return ["dashboard", "tasks", "vendors", "wedding-day", "inspiration", "contacts", "activity"];
+    return ["dashboard", "tasks", "vendors", "wedding-day", "inspiration", "contacts", "activity", "notifications"];
   }
   // owner / editor
   return [
@@ -55,5 +55,6 @@ export function visibleNavSections(role: WeddingRole | null | undefined): string
     "sharing",
     "activity",
     "settings",
+    "notifications",
   ];
 }

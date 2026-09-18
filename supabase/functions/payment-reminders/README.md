@@ -2,7 +2,8 @@
 
 Daily digest of upcoming instalment payments, emailed to the wedding owner
 (and `joint_email`/`partner_1_email`/`partner_2_email`, wherever set) via
-Resend. See `index.ts` for what it queries and sends.
+Resend — and, separately, pushed to every owner/editor member's devices
+(see `../_shared/push.ts`). See `index.ts` for what it queries and sends.
 
 ## Deploy
 
@@ -11,6 +12,13 @@ supabase functions deploy payment-reminders
 supabase secrets set RESEND_API_KEY=re_your_key_here
 # optional, defaults to "Wedding Planner <onboarding@resend.dev>":
 supabase secrets set RESEND_FROM_EMAIL="Wedding Planner <reminders@yourdomain.com>"
+
+# For the push channel (shared with task-reminders) — generate a keypair
+# with `npx web-push generate-vapid-keys`, or reuse the same one the app's
+# NEXT_PUBLIC_VAPID_PUBLIC_KEY/VAPID_PRIVATE_KEY env vars already use:
+supabase secrets set VAPID_PUBLIC_KEY=your_public_key VAPID_PRIVATE_KEY=your_private_key
+# optional, defaults to "support@example.com" — shown to push services, not users:
+supabase secrets set VAPID_SUBJECT_EMAIL=you@yourdomain.com
 ```
 
 `SUPABASE_URL` and `SUPABASE_SERVICE_ROLE_KEY` don't need to be set — every

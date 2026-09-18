@@ -243,6 +243,19 @@ export interface InspirationPhotoComment {
   created_at: string;
 }
 
+// One row per (user, wedding) — the Notifications tab's toggles. Missing a
+// row (nobody has saved preferences yet) means every category defaults to
+// on, matching the column defaults in migration 0020.
+export interface NotificationPreferences {
+  user_id: string;
+  wedding_id: string;
+  payment_due: boolean;
+  task_assigned: boolean;
+  task_due: boolean;
+  member_joined: boolean;
+  updated_at: string;
+}
+
 export interface ActivityLogEntry {
   id: string;
   wedding_id: string;
