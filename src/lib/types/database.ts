@@ -68,9 +68,16 @@ export interface WeddingMember {
   wedding_id: string;
   user_id: string | null;
   invited_email: string | null;
+  invited_name: string | null;
   role: WeddingRole;
   created_at: string;
   profile?: Profile | null;
+  // Whether they've actually clicked their invite link and confirmed —
+  // false the whole time between /api/invite sending it and that
+  // happening, even though user_id is already set by then. Comes from
+  // the wedding_members_with_status view (see migration 0013), not the
+  // base table.
+  confirmed: boolean;
 }
 
 export interface ExpenseCategory {
