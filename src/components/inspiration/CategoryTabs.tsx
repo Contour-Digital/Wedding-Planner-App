@@ -70,15 +70,13 @@ export function CategoryTabs({
           Uncategorized
         </button>
         {categories.map((c) => (
-          <div key={c.id} className="flex shrink-0 items-center">
-            <button className={pillClass(active === c.id)} onClick={() => onSelect(c.id)}>
-              {c.name}
-            </button>
+          <div key={c.id} className={clsx(pillClass(active === c.id), "flex shrink-0 items-center gap-1 pr-2")}>
+            <button onClick={() => onSelect(c.id)}>{c.name}</button>
             {editable && (
               <button
                 onClick={() => setRemovingCategory(c)}
                 aria-label={`Remove ${c.name} category`}
-                className="-ml-1 px-1 text-muted hover:text-danger"
+                className="text-muted hover:text-danger"
               >
                 ×
               </button>

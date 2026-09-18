@@ -214,7 +214,7 @@ export default function SharingPage() {
               const isOwner = m.role === "owner";
               return (
                 <div key={m.id} className="rounded-xl border border-line p-3">
-                  <div className="flex items-center justify-between gap-2">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div>
                       <div className="flex flex-wrap items-center gap-1.5">
                         <p className="text-sm font-medium">{displayName}</p>
@@ -229,7 +229,7 @@ export default function SharingPage() {
                     {isOwner ? (
                       <span className="text-xs font-medium text-muted">{ROLE_LABEL.owner}</span>
                     ) : (
-                      <div className="flex items-center gap-2">
+                      <div className="flex flex-wrap items-center gap-x-3 gap-y-2">
                         <Select
                           value={m.role}
                           onChange={(e) => updateRole(m.id, e.target.value as WeddingRole)}
