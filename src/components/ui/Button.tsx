@@ -2,7 +2,7 @@ import { clsx } from "clsx";
 import type { ButtonHTMLAttributes } from "react";
 import { Spinner } from "./Spinner";
 
-type Variant = "primary" | "secondary" | "ghost" | "danger";
+type Variant = "primary" | "secondary" | "ghost" | "danger" | "outline";
 
 interface Props extends ButtonHTMLAttributes<HTMLButtonElement> {
   variant?: Variant;
@@ -19,6 +19,7 @@ const variantClasses: Record<Variant, string> = {
   secondary: "bg-line text-ink hover:bg-secondary/60",
   ghost: "bg-transparent text-ink hover:bg-line",
   danger: "bg-danger text-white hover:opacity-90",
+  outline: "border border-line bg-transparent text-ink hover:bg-line",
 };
 
 export function Button({ variant = "primary", fullWidth, loading, disabled, className, children, ...props }: Props) {
