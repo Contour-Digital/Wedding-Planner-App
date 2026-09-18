@@ -101,14 +101,14 @@ export function WeddingSettingsForm() {
               required
             />
           </Field>
-          <Field label="Partner 1 email" hint="Shown on the Contacts tab">
+          <Field label="Partner 1 email" hint="Shown on the Contacts tab, and gets payment due reminders">
             <Input
               type="email"
               value={form.partner_1_email}
               onChange={(e) => setForm({ ...form, partner_1_email: e.target.value })}
             />
           </Field>
-          <Field label="Partner 2 email" hint="Shown on the Contacts tab">
+          <Field label="Partner 2 email" hint="Shown on the Contacts tab, and gets payment due reminders">
             <Input
               type="email"
               value={form.partner_2_email}
@@ -129,7 +129,10 @@ export function WeddingSettingsForm() {
               onChange={(e) => setForm({ ...form, partner_2_phone: e.target.value })}
             />
           </Field>
-          <Field label="Joint email" hint="Optional — a shared inbox for the two of you, if you have one">
+          <Field
+            label="Joint email"
+            hint="Optional — a shared inbox for the two of you; also gets payment due reminders, alongside the owner's email"
+          >
             <Input
               type="email"
               value={form.joint_email}
