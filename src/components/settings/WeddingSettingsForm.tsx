@@ -17,6 +17,8 @@ export function WeddingSettingsForm() {
     partner_2: wedding?.partner_2 ?? "",
     partner_1_phone: wedding?.partner_1_phone ?? "",
     partner_2_phone: wedding?.partner_2_phone ?? "",
+    partner_1_email: wedding?.partner_1_email ?? "",
+    partner_2_email: wedding?.partner_2_email ?? "",
     wedding_date: wedding?.wedding_date ?? "",
     ceremony_time: wedding?.ceremony_time ?? "",
     venue: wedding?.venue ?? "",
@@ -99,24 +101,35 @@ export function WeddingSettingsForm() {
               required
             />
           </Field>
-          <Field label="Partner 1 phone" hint="Shown on the Contacts tab">
+          <Field label="Partner 1 email" hint="Shown on the Contacts tab">
+            <Input
+              type="email"
+              value={form.partner_1_email}
+              onChange={(e) => setForm({ ...form, partner_1_email: e.target.value })}
+            />
+          </Field>
+          <Field label="Partner 2 email" hint="Shown on the Contacts tab">
+            <Input
+              type="email"
+              value={form.partner_2_email}
+              onChange={(e) => setForm({ ...form, partner_2_email: e.target.value })}
+            />
+          </Field>
+          <Field label="Partner 1 phone" hint="Shown on the Contacts and Sharing tabs">
             <Input
               type="tel"
               value={form.partner_1_phone}
               onChange={(e) => setForm({ ...form, partner_1_phone: e.target.value })}
             />
           </Field>
-          <Field label="Partner 2 phone" hint="Shown on the Contacts tab">
+          <Field label="Partner 2 phone" hint="Shown on the Contacts and Sharing tabs">
             <Input
               type="tel"
               value={form.partner_2_phone}
               onChange={(e) => setForm({ ...form, partner_2_phone: e.target.value })}
             />
           </Field>
-          <Field
-            label="Joint email"
-            hint="Optional — replies to invite emails sent from Sharing go here instead of to you personally"
-          >
+          <Field label="Joint email" hint="Optional — a shared inbox for the two of you, if you have one">
             <Input
               type="email"
               value={form.joint_email}

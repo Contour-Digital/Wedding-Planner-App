@@ -74,22 +74,19 @@ export default function ContactsPage() {
         <Card className="space-y-3">
           <h3 className="font-display text-lg font-semibold">The couple</h3>
           <div className="space-y-2">
-            <div className="rounded-xl border border-line p-3">
-              <p className="text-sm font-medium">{wedding.partner_1}</p>
-              {wedding.partner_1_phone ? (
-                <PhoneLink phone={wedding.partner_1_phone} />
-              ) : (
-                editable && <p className="text-xs text-muted">No phone number yet</p>
-              )}
-            </div>
-            <div className="rounded-xl border border-line p-3">
-              <p className="text-sm font-medium">{wedding.partner_2}</p>
-              {wedding.partner_2_phone ? (
-                <PhoneLink phone={wedding.partner_2_phone} />
-              ) : (
-                editable && <p className="text-xs text-muted">No phone number yet</p>
-              )}
-            </div>
+            {[
+              { name: wedding.partner_1, phone: wedding.partner_1_phone, email: wedding.partner_1_email },
+              { name: wedding.partner_2, phone: wedding.partner_2_phone, email: wedding.partner_2_email },
+            ].map((partner) => (
+              <div key={partner.name} className="rounded-xl border border-line p-3">
+                <p className="text-sm font-medium">{partner.name}</p>
+                <PhoneLink phone={partner.phone} />
+                {partner.email && <p className="text-xs text-muted">{partner.email}</p>}
+                {!partner.phone && !partner.email && editable && (
+                  <p className="text-xs text-muted">No contact details yet</p>
+                )}
+              </div>
+            ))}
           </div>
           {editable && (
             <Link href="/settings" className="inline-block text-xs font-medium text-primaryStrong">
