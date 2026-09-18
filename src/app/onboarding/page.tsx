@@ -5,7 +5,7 @@ import { useRouter } from "next/navigation";
 import { createClient } from "@/lib/supabase/client";
 import { useWedding } from "@/lib/wedding/WeddingProvider";
 import { Button } from "@/components/ui/Button";
-import { Field, Input, Select } from "@/components/ui/Input";
+import { Field, Input, Select, Textarea } from "@/components/ui/Input";
 import { CURRENCIES } from "@/lib/constants";
 import { DEFAULT_EXPENSE_CATEGORIES, estimateCategoryBudget } from "@/lib/utils/categoryEstimates";
 import { formatCurrency } from "@/lib/utils/currency";
@@ -53,7 +53,7 @@ export default function OnboardingPage() {
   const [step, setStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
-  const [partnerInviteLink, setPartnerInviteLink] = useState<string | null>(null);
+  const [partnerInviteMessage, setPartnerInviteMessage] = useState<string | null>(null);
 
   const [partner1Name, setPartner1Name] = useState(
     (user?.user_metadata?.full_name as string | undefined) ?? ""
@@ -219,11 +219,13 @@ export default function OnboardingPage() {
     }
 
     // create_wedding_for_current_user() creates a pending wedding_members
-    // row for the partner's email (same shape as an invite from Sharing —
-    // invited_email set, user_id null) but has no way to hand back a link
-    // itself, so it's looked up here the same way Sharing's "Copy invite
-    // link" does: the row's own id is the link. Skipped entirely if no
-    // partner email was given.
+    // row for the partner's email (invited_email set, user_id null) but,
+    // being a plain SQL function, has no way to generate them an account
+    // or hand back anything to share — so this calls the same endpoint
+    // Sharing's invite form uses, which finds that already-created row (by
+    // matching invited_email) and turns it into a real, ready-to-use
+    // account with a generated password, same as any other invite.
+    // Skipped entirely if no partner email was given.
     if (partner2Email.trim()) {
       const { data: ownerRow } = await supabase
         .from("wedding_members")
@@ -234,21 +236,29 @@ export default function OnboardingPage() {
         .limit(1)
         .maybeSingle();
 
-      const { data: partnerRow } = ownerRow
-        ? await supabase
-            .from("wedding_members")
-            .select("id")
-            .eq("wedding_id", ownerRow.wedding_id)
-            .ilike("invited_email", partner2Email.trim())
-            .maybeSingle()
-        : { data: null };
-
-      if (partnerRow) {
-        setSubmitting(false);
-        const link = `${window.location.origin}/invite/${partnerRow.id}`;
-        setPartnerInviteLink(link);
-        await copyToClipboard(link);
-        return;
+      if (ownerRow) {
+        try {
+          const res = await fetch("/api/invite", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              weddingId: ownerRow.wedding_id,
+              email: partner2Email.trim(),
+              role: "editor",
+              name: partner2Name.trim() || undefined,
+            }),
+          });
+          const result = await res.json();
+          if (res.ok && result.message) {
+            setSubmitting(false);
+            setPartnerInviteMessage(result.message);
+            await copyToClipboard(result.message);
+            return;
+          }
+        } catch {
+          // Fall through to the dashboard — the wedding itself was created
+          // fine, they can invite their partner from Sharing instead.
+        }
       }
     }
 
@@ -257,23 +267,21 @@ export default function OnboardingPage() {
     router.refresh();
   }
 
-  if (partnerInviteLink) {
+  if (partnerInviteMessage) {
     return (
       <div className="flex min-h-screen items-center justify-center bg-white px-4 py-10">
         <div className="w-full max-w-sm space-y-6 text-center">
           <div>
             <h1 className="font-display text-2xl font-semibold text-ink">You&apos;re all set! 🎉</h1>
             <p className="mt-1 text-sm text-muted">
-              Share this link with {partner2Name.trim() || "your partner"} to give them full access — it&apos;s
-              already copied to your clipboard.
+              Share this with {partner2Name.trim() || "your partner"} to give them full access — it&apos;s already
+              copied to your clipboard.
             </p>
           </div>
-          <div className="flex flex-col gap-2 sm:flex-row">
-            <Input readOnly value={partnerInviteLink} onFocus={(e) => e.target.select()} />
-            <Button variant="secondary" onClick={() => copyToClipboard(partnerInviteLink)}>
-              Copy
-            </Button>
-          </div>
+          <Textarea readOnly rows={4} value={partnerInviteMessage} onFocus={(e) => e.target.select()} />
+          <Button variant="secondary" fullWidth onClick={() => copyToClipboard(partnerInviteMessage)}>
+            Copy again
+          </Button>
           <Button
             fullWidth
             onClick={() => {
@@ -321,7 +329,7 @@ export default function OnboardingPage() {
             </Field>
             <Field
               label="Partner's email"
-              hint="Optional — gives you a link to share with them, with full access, as soon as you finish"
+              hint="Optional — gives you a message to share with them, with full access, as soon as you finish"
             >
               <Input
                 type="email"

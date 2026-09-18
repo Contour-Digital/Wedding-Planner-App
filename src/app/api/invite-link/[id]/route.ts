@@ -43,23 +43,34 @@ export async function GET(_request: Request, { params }: { params: { id: string 
   const weddingLabel =
     wedding?.partner_1 && wedding?.partner_2 ? `${wedding.partner_1} & ${wedding.partner_2}` : "this wedding";
 
-  const { data: existingProfile } = await admin
-    .from("profiles")
-    .select("id")
-    .eq("email", member.invited_email)
-    .maybeSingle();
+  // "Already accepted" means someone has actually signed in with this
+  // membership's credentials — not just that an account exists for it. An
+  // invite (this one or /api/invite/route.ts's onboarding equivalent)
+  // creates the account with a generated password up front, so accountReady
+  // is normally true from the moment the invite is made; everSignedIn only
+  // flips once they've actually used it.
+  let everSignedIn = false;
+  if (member.user_id) {
+    const { data: userData } = await admin.auth.admin.getUserById(member.user_id);
+    everSignedIn = userData?.user?.last_sign_in_at != null;
+  }
 
   return NextResponse.json({
     valid: true,
-    alreadyClaimed: member.user_id !== null,
+    everSignedIn,
+    accountReady: member.user_id !== null,
     role: member.role,
     invitedName: member.invited_name,
     invitedEmail: member.invited_email,
     weddingLabel,
-    hasExistingAccount: existingProfile !== null,
   });
 }
 
+// Legacy fallback only, for a pending row created before generated
+// passwords existed (accountReady: false — no user_id yet). Anything
+// invited since always has accountReady: true and signs in directly on the
+// page with the password it was given; this POST is never called for that
+// case.
 export async function POST(request: Request, { params }: { params: { id: string } }) {
   const admin = adminClient();
   if (!admin) {
@@ -86,51 +97,10 @@ export async function POST(request: Request, { params }: { params: { id: string 
     return NextResponse.json({ error: "This invite link isn't valid." }, { status: 404 });
   }
 
-  // The server client here is cookie-bound (see src/lib/supabase/server.ts)
-  // — it both reads whoever's already signed in on this request, and, when
-  // we sign a brand-new account in below, writes the session cookie onto
-  // the response so the browser ends up authenticated too.
-  const supabase = createServerClient();
-  const {
-    data: { user: caller },
-  } = await supabase.auth.getUser();
-
   if (member.user_id !== null) {
-    // Already claimed. Only a no-op success if the caller is the person
-    // who claimed it (e.g. the page re-posting after a refresh) — anyone
-    // else gets turned away rather than silently doing nothing useful.
-    if (caller && caller.id === member.user_id) {
-      return NextResponse.json({ ok: true, weddingId: member.wedding_id });
-    }
-    return NextResponse.json({ error: "This invite has already been accepted." }, { status: 409 });
+    return NextResponse.json({ error: "This invite already has an account — sign in instead." }, { status: 409 });
   }
 
-  if (caller) {
-    // Signed in already (they used the "I already have an account" sign-in
-    // form on the invite page first) — the only thing left to check is
-    // that they signed in as the actual invitee, not someone else who
-    // happened to have the link.
-    if (caller.email?.toLowerCase() !== member.invited_email.toLowerCase()) {
-      return NextResponse.json(
-        { error: `You're signed in as ${caller.email}, but this invite is for ${member.invited_email}.` },
-        { status: 403 }
-      );
-    }
-
-    const { error: updateError } = await admin
-      .from("wedding_members")
-      .update({ user_id: caller.id })
-      .eq("id", member.id);
-    if (updateError) return NextResponse.json({ error: updateError.message }, { status: 400 });
-
-    return NextResponse.json({ ok: true, weddingId: member.wedding_id });
-  }
-
-  // Not signed in and nobody's claimed this yet — they're setting a
-  // password to create their account right here, gated entirely by having
-  // this link (Supabase's own "confirm your email" round-trip is skipped —
-  // email_confirm: true — since the couple handing them the link is
-  // already the confirmation).
   const password = body.password;
   if (!password || password.length < 6) {
     return NextResponse.json({ error: "Enter a password of at least 6 characters." }, { status: 400 });
@@ -150,10 +120,10 @@ export async function POST(request: Request, { params }: { params: { id: string 
     );
   }
 
-  // Signs this request's cookie-bound client in, so the browser has a real
-  // session once it follows the redirect. handle_new_user() likely already
-  // claimed this row as a side effect of creating the account above (it
-  // matches on invited_email), but this update is harmless either way.
+  // The server client here is cookie-bound (see src/lib/supabase/server.ts)
+  // — signing in on it writes the session cookie onto the response, so the
+  // browser has a real session once it follows the redirect.
+  const supabase = createServerClient();
   const { error: signInError } = await supabase.auth.signInWithPassword({ email: member.invited_email, password });
   if (signInError) return NextResponse.json({ error: signInError.message }, { status: 400 });
 
