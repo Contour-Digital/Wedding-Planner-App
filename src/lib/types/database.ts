@@ -50,6 +50,8 @@ export interface Wedding {
   partner_2: string;
   partner_1_phone: string | null;
   partner_2_phone: string | null;
+  partner_1_email: string | null;
+  partner_2_email: string | null;
   wedding_date: string | null;
   ceremony_time: string | null;
   venue: string | null;

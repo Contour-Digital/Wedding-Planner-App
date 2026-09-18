@@ -216,6 +216,17 @@ export default function SharingPage() {
             {members.map((m) => {
               const displayName = m.profile?.full_name ?? m.invited_name ?? m.invited_email ?? "Pending invite";
               const displayEmail = m.profile?.email ?? m.invited_email;
+              // wedding_members has no direct link to "partner 1/2" — it's
+              // membership by user, not by role in the relationship — so
+              // this is a name match against the couple's own Settings
+              // fields (migration 0017/0018) to decide whose phone number,
+              // if any, belongs on this particular row.
+              const partnerPhone =
+                wedding && displayName === wedding.partner_1
+                  ? wedding.partner_1_phone
+                  : wedding && displayName === wedding.partner_2
+                  ? wedding.partner_2_phone
+                  : null;
               const isOwner = m.role === "owner";
               return (
                 <div key={m.id} className="rounded-xl border border-line p-3">
@@ -230,6 +241,7 @@ export default function SharingPage() {
                         )}
                       </div>
                       {displayEmail && <p className="text-xs text-muted">{displayEmail}</p>}
+                      {partnerPhone && <p className="text-xs text-muted">{partnerPhone}</p>}
                     </div>
                     {isOwner ? (
                       <span className="text-xs font-medium text-muted">{ROLE_LABEL.owner}</span>
