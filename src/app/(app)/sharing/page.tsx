@@ -16,6 +16,19 @@ import type { WeddingRole } from "@/lib/types/database";
 
 const INVITABLE_ROLES: WeddingRole[] = ["editor", "viewer", "timeline_viewer"];
 
+// Best-effort clipboard write — the Clipboard API can be blocked (some
+// in-app/PWA webviews, non-HTTPS contexts), so a failed copy still hands
+// the caller the link to show and let the person copy manually instead of
+// just silently doing nothing.
+async function copyToClipboard(text: string) {
+  try {
+    await navigator.clipboard.writeText(text);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 export default function SharingPage() {
   const { wedding, user, role } = useWedding();
   const { members, refresh } = useMembers(wedding?.id);
@@ -26,81 +39,77 @@ export default function SharingPage() {
   const [inviteRole, setInviteRole] = useState<WeddingRole>("timeline_viewer");
   const [error, setError] = useState<string | null>(null);
   const [notice, setNotice] = useState<string | null>(null);
-  const [sending, setSending] = useState(false);
+  const [generatedLink, setGeneratedLink] = useState<string | null>(null);
+  const [creating, setCreating] = useState(false);
   const [removingMemberId, setRemovingMemberId] = useState<string | null>(null);
-  const [resendingMemberId, setResendingMemberId] = useState<string | null>(null);
-  const [resendStatus, setResendStatus] = useState<{ memberId: string; message: string; isError: boolean } | null>(
-    null
-  );
+  const [linkStatus, setLinkStatus] = useState<{ memberId: string; message: string } | null>(null);
 
   const canManage = canManageMembers(role);
   const removingMember = members.find((m) => m.id === removingMemberId) ?? null;
 
-  // Shared by the "Invite someone" form and each pending row's "Resend
-  // invite" button — same request, same success/error messages either way.
-  async function requestInvite(targetEmail: string, targetRole: WeddingRole, targetName?: string) {
+  async function createInvite() {
     if (!wedding || !user) {
-      return { ok: false, isError: true, message: "Still loading your wedding — try again in a moment." };
+      setError("Still loading your wedding — try again in a moment.");
+      return;
     }
-    let result: { ok?: boolean; emailSent?: boolean; error?: string };
+    if (!email.trim()) {
+      setError("Enter an email address.");
+      return;
+    }
+    setCreating(true);
+    setError(null);
+    setNotice(null);
+    setGeneratedLink(null);
+
+    let result: { ok?: boolean; inviteLink?: string; alreadyHasAccess?: boolean; error?: string };
     try {
       const res = await fetch("/api/invite", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({ weddingId: wedding.id, email: targetEmail, role: targetRole, name: targetName }),
+        body: JSON.stringify({
+          weddingId: wedding.id,
+          email: email.trim(),
+          role: inviteRole,
+          name: name.trim() || undefined,
+        }),
       });
       result = await res.json();
       if (!res.ok) {
-        return { ok: false, isError: true, message: result.error ?? "Couldn't send that invite — please try again." };
+        setError(result.error ?? "Couldn't create that invite — please try again.");
+        setCreating(false);
+        return;
       }
     } catch {
-      return { ok: false, isError: true, message: "Couldn't reach the server — check your connection and try again." };
+      setError("Couldn't reach the server — check your connection and try again.");
+      setCreating(false);
+      return;
     }
 
     await logActivity(supabase, {
       weddingId: wedding.id,
       userId: user.id,
       actionType: "member.invited",
-      description: `Invited ${targetEmail} as ${ROLE_LABEL[targetRole]}.`,
+      description: `Invited ${email.trim()} as ${ROLE_LABEL[inviteRole]}.`,
       entityType: "wedding_member",
     });
-    return {
-      ok: true,
-      isError: false,
-      message: result.emailSent
-        ? `Invite email sent to ${targetEmail}.`
-        : `${targetEmail} already has an account — they now have access, no email needed.`,
-    };
+
+    if (result.alreadyHasAccess) {
+      setNotice(`${email.trim()} already has an account — they now have access, no link needed.`);
+    } else if (result.inviteLink) {
+      setGeneratedLink(result.inviteLink);
+      await copyToClipboard(result.inviteLink);
+      setNotice("Link copied — share it with them however you like (text, WhatsApp, etc).");
+    }
+    setName("");
+    setEmail("");
+    refresh();
+    setCreating(false);
   }
 
-  async function sendInvite() {
-    if (!email.trim()) {
-      setError("Enter an email address.");
-      return;
-    }
-    setSending(true);
-    setError(null);
-    setNotice(null);
-
-    const result = await requestInvite(email.trim(), inviteRole, name.trim() || undefined);
-    if (result.isError) {
-      setError(result.message);
-    } else {
-      setNotice(result.message);
-      setName("");
-      setEmail("");
-      refresh();
-    }
-    setSending(false);
-  }
-
-  async function resendInvite(memberId: string, targetEmail: string, targetRole: WeddingRole) {
-    setResendingMemberId(memberId);
-    setResendStatus(null);
-    const result = await requestInvite(targetEmail, targetRole);
-    setResendStatus({ memberId, message: result.message, isError: result.isError });
-    if (result.ok) refresh();
-    setResendingMemberId(null);
+  async function copyMemberLink(memberId: string) {
+    const link = `${window.location.origin}/invite/${memberId}`;
+    const copied = await copyToClipboard(link);
+    setLinkStatus({ memberId, message: copied ? "Link copied!" : link });
   }
 
   async function updateRole(memberId: string, newRole: WeddingRole) {
@@ -130,8 +139,9 @@ export default function SharingPage() {
         <Card className="space-y-3">
           <h3 className="font-display text-lg font-semibold">Invite someone</h3>
           <p className="text-xs text-muted">
-            We&apos;ll email them a sign-in link right away. If they already have an account, they get access
-            immediately instead — no email needed.
+            We&apos;ll generate a unique link for them — share it however you like. It only works for the email
+            address below, and gives them exactly the access you set here. If they already have an account, they
+            get access immediately instead — no link needed.
           </p>
           <div className="flex flex-col gap-2 sm:flex-row">
             <Field label="Name" hint="Optional — shown here before they accept">
@@ -153,8 +163,16 @@ export default function SharingPage() {
           <p className="text-xs text-muted">{ROLE_DESCRIPTION[inviteRole]}</p>
           {error && <p className="text-sm text-danger">{error}</p>}
           {notice && <p className="text-sm text-good">{notice}</p>}
-          <Button onClick={sendInvite} disabled={sending}>
-            {sending ? "Inviting…" : "Send invite"}
+          {generatedLink && (
+            <div className="flex flex-col gap-2 sm:flex-row">
+              <Input readOnly value={generatedLink} onFocus={(e) => e.target.select()} />
+              <Button variant="secondary" onClick={() => copyToClipboard(generatedLink)}>
+                Copy
+              </Button>
+            </div>
+          )}
+          <Button onClick={createInvite} disabled={creating}>
+            {creating ? "Creating link…" : "Create invite link"}
           </Button>
         </Card>
 
@@ -164,14 +182,6 @@ export default function SharingPage() {
             {members.map((m) => {
               const displayName = m.profile?.full_name ?? m.invited_name ?? m.invited_email ?? "Pending invite";
               const displayEmail = m.profile?.email ?? m.invited_email;
-              // The email to resend to. invited_email is the permanent
-              // record of what address an invite was sent to (see
-              // migration 0015 — it used to get cleared the moment the
-              // invite was claimed, long before confirmation, which left
-              // nothing to resend to if anything downstream ever went
-              // wrong). profile?.email is still a fallback for rows
-              // created before that migration.
-              const resendTargetEmail = m.invited_email ?? m.profile?.email ?? null;
               const isOwner = m.role === "owner";
               return (
                 <div key={m.id} className="rounded-xl border border-line p-3">
@@ -202,13 +212,12 @@ export default function SharingPage() {
                             </option>
                           ))}
                         </Select>
-                        {!m.confirmed && resendTargetEmail && (
+                        {!m.confirmed && (
                           <button
-                            onClick={() => resendInvite(m.id, resendTargetEmail, m.role)}
-                            disabled={resendingMemberId === m.id}
-                            className="whitespace-nowrap text-xs font-medium text-primaryStrong disabled:opacity-50"
+                            onClick={() => copyMemberLink(m.id)}
+                            className="whitespace-nowrap text-xs font-medium text-primaryStrong"
                           >
-                            {resendingMemberId === m.id ? "Resending…" : "Resend invite"}
+                            Copy invite link
                           </button>
                         )}
                         <button onClick={() => setRemovingMemberId(m.id)} className="text-xs text-danger">
@@ -217,10 +226,8 @@ export default function SharingPage() {
                       </div>
                     )}
                   </div>
-                  {resendStatus?.memberId === m.id && (
-                    <p className={`mt-2 text-xs ${resendStatus.isError ? "text-danger" : "text-good"}`}>
-                      {resendStatus.message}
-                    </p>
+                  {linkStatus?.memberId === m.id && (
+                    <p className="mt-2 break-all text-xs text-good">{linkStatus.message}</p>
                   )}
                 </div>
               );
