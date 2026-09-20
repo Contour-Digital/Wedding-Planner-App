@@ -21,7 +21,7 @@ export function useVendors(weddingId: string | null | undefined) {
       .from("vendors")
       .select("*, contacts:vendor_contacts(*), documents:vendor_documents(*)")
       .eq("wedding_id", weddingId)
-      .order("created_at", { ascending: true });
+      .order("name", { ascending: true });
     if (!error && data) setVendors(data as VendorWithRelations[]);
     setLoading(false);
   }, [weddingId]);
