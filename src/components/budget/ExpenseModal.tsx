@@ -275,6 +275,20 @@ export function ExpenseModal({
             <Input type="number" value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)} />
           </Field>
         </div>
+        {/* Quick action for the common case of a single, already-settled
+            payment — sets deposit_amount to match total_amount, the same
+            mechanism computeExpenseTotals already treats as "Paid in Full",
+            rather than making the couple type the total into Deposit paid
+            themselves. */}
+        <label className="flex items-center gap-1.5 text-sm">
+          <input
+            type="checkbox"
+            checked={totalAmount !== "" && Number(totalAmount) > 0 && Number(depositAmount) === Number(totalAmount)}
+            onChange={(e) => setDepositAmount(e.target.checked ? totalAmount : "0")}
+            disabled={!totalAmount}
+          />
+          Paid in full
+        </label>
 
         <Field label="Notes">
           <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} />
