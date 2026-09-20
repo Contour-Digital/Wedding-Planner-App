@@ -151,7 +151,7 @@ export default function BudgetPage() {
           />
         </div>
 
-        <Link href="/budget/upcoming">
+        <Link href="/budget/upcoming" className="mt-2 block">
           <Button variant="outline">View upcoming payments</Button>
         </Link>
 
