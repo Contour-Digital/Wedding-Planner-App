@@ -17,6 +17,7 @@ const STEP_LABELS = [
   "Location",
   "Guest count",
   "Currency",
+  "Overall budget",
   "Categories",
   "Budget targets",
 ];
@@ -34,6 +35,7 @@ interface OnboardingDraft {
   location: string;
   guestCount: string;
   currency: string;
+  totalBudget: string;
   selectedCategories: string[];
   categoryTargets: Record<string, string>;
 }
@@ -65,6 +67,7 @@ export default function OnboardingPage() {
   const [location, setLocation] = useState("");
   const [guestCount, setGuestCount] = useState("");
   const [currency, setCurrency] = useState("USD");
+  const [totalBudget, setTotalBudget] = useState("");
   const [selectedCategories, setSelectedCategories] = useState<string[]>([...DEFAULT_EXPENSE_CATEGORIES]);
   const [categoryTargets, setCategoryTargets] = useState<Record<string, string>>({});
 
@@ -87,6 +90,7 @@ export default function OnboardingPage() {
       if (typeof draft.location === "string") setLocation(draft.location);
       if (typeof draft.guestCount === "string") setGuestCount(draft.guestCount);
       if (typeof draft.currency === "string") setCurrency(draft.currency);
+      if (typeof draft.totalBudget === "string") setTotalBudget(draft.totalBudget);
       if (Array.isArray(draft.selectedCategories)) setSelectedCategories(draft.selectedCategories);
       if (draft.categoryTargets && typeof draft.categoryTargets === "object") {
         setCategoryTargets(draft.categoryTargets);
@@ -111,6 +115,7 @@ export default function OnboardingPage() {
         location,
         guestCount,
         currency,
+        totalBudget,
         selectedCategories,
         categoryTargets,
       };
@@ -128,6 +133,7 @@ export default function OnboardingPage() {
     location,
     guestCount,
     currency,
+    totalBudget,
     selectedCategories,
     categoryTargets,
   ]);
@@ -162,6 +168,7 @@ export default function OnboardingPage() {
     true, // location — always skippable
     true, // guest count — always skippable
     true, // currency always has a valid default
+    true, // overall budget — always skippable
     selectedCategories.length > 0,
     true, // budget targets — always skippable, default to $0 per category
   ][step];
@@ -191,6 +198,11 @@ export default function OnboardingPage() {
       return;
     }
 
+    // The couple's own stated overall budget, if they gave one — falls back
+    // to the sum of category targets (the only figure available before this
+    // step existed) when left blank, rather than saving $0.
+    const finalTotalBudget = totalBudget.trim() ? Number(totalBudget) : totalTarget;
+
     const { error } = await supabase.rpc("create_wedding_for_current_user", {
       p_partner_1: partner1Name.trim(),
       p_partner_2: partner2Name.trim(),
@@ -199,7 +211,7 @@ export default function OnboardingPage() {
       p_location: location.trim() || null,
       p_guest_count: guestCount ? Number(guestCount) : null,
       p_currency: currency,
-      p_total_budget: totalTarget,
+      p_total_budget: finalTotalBudget,
       p_categories: selectedCategories.map((name) => ({
         name,
         target_budget: Number(categoryTargets[name]) || 0,
@@ -421,6 +433,30 @@ export default function OnboardingPage() {
         {step === 5 && (
           <div className="space-y-4">
             <div>
+              <h1 className="font-display text-2xl font-semibold text-ink">Overall budget</h1>
+              <p className="mt-1 text-sm text-muted">
+                Your total wedding budget, or your ideal amount to spend — you can change this any time in
+                Settings.
+              </p>
+            </div>
+            <Field
+              label="Total wedding budget"
+              hint="Optional — skip it and the category targets on the next steps will add up to your total instead"
+            >
+              <Input
+                type="number"
+                min="0"
+                value={totalBudget}
+                onChange={(e) => setTotalBudget(e.target.value)}
+                placeholder="35000"
+              />
+            </Field>
+          </div>
+        )}
+
+        {step === 6 && (
+          <div className="space-y-4">
+            <div>
               <h1 className="font-display text-2xl font-semibold text-ink">What do you want to track?</h1>
               <p className="mt-1 text-sm text-muted">
                 Pick the expense categories you want a budget for — you can add, rename or remove these any time.
@@ -449,7 +485,7 @@ export default function OnboardingPage() {
           </div>
         )}
 
-        {step === 6 && (
+        {step === 7 && (
           <div className="space-y-4">
             <div>
               <h1 className="font-display text-2xl font-semibold text-ink">Set a target for each category</h1>
@@ -492,7 +528,9 @@ export default function OnboardingPage() {
             {submitting
               ? "Setting up…"
               : step < TOTAL_STEPS - 1
-              ? (step === 2 && !location.trim()) || (step === 3 && !guestCount.trim())
+              ? (step === 2 && !location.trim()) ||
+                (step === 3 && !guestCount.trim()) ||
+                (step === 5 && !totalBudget.trim())
                 ? "Skip"
                 : "Next"
               : "Start planning"}
