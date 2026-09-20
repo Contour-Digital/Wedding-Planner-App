@@ -44,6 +44,12 @@ export default function VendorDetailPage() {
     setExpenseModalOpen(true);
   }
 
+  function openAddExpense() {
+    setEditingExpense(null);
+    setExpenseModalKey((k) => k + 1);
+    setExpenseModalOpen(true);
+  }
+
   const vendor = vendors.find((v) => v.id === vendorId);
   if (!vendor) {
     return (
@@ -99,7 +105,14 @@ export default function VendorDetailPage() {
 
         {showFinancials && (
           <Card>
-            <h3 className="mb-3 font-display text-lg font-semibold">Linked expenses</h3>
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="font-display text-lg font-semibold">Linked expenses</h3>
+              {editable && (
+                <Button variant="secondary" onClick={openAddExpense}>
+                  + Add expense
+                </Button>
+              )}
+            </div>
             <div className="mb-3 grid grid-cols-3 gap-2 text-xs text-muted">
               <div>Committed: {formatCurrency(committed, wedding?.currency)}</div>
               <div>Paid: {formatCurrency(paid, wedding?.currency)}</div>
@@ -151,6 +164,7 @@ export default function VendorDetailPage() {
           categories={categories}
           vendors={vendors}
           expense={editingExpense}
+          defaultVendorId={vendor.id}
           onSaved={refreshExpenses}
         />
       )}

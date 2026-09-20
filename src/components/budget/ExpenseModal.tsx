@@ -48,6 +48,7 @@ export function ExpenseModal({
   categories,
   vendors,
   expense,
+  defaultVendorId,
   onSaved,
 }: {
   open: boolean;
@@ -55,6 +56,10 @@ export function ExpenseModal({
   categories: ExpenseCategory[];
   vendors: VendorWithRelations[];
   expense?: ExpenseWithInstalments | null;
+  // Pre-selects a vendor when adding a fresh expense (e.g. from that
+  // vendor's own detail page) — ignored once an existing expense's own
+  // vendor_id takes over.
+  defaultVendorId?: string;
   onSaved: () => void;
 }) {
   const { wedding, user } = useWedding();
@@ -63,9 +68,9 @@ export function ExpenseModal({
   const [name, setName] = useState(expense?.name ?? "");
   const [categoryId, setCategoryId] = useState(expense?.category_id ?? categories[0]?.id ?? "");
   const [vendorMode, setVendorMode] = useState<"none" | "existing" | "new">(
-    expense?.vendor_id ? "existing" : "none"
+    expense?.vendor_id || defaultVendorId ? "existing" : "none"
   );
-  const [vendorId, setVendorId] = useState(expense?.vendor_id ?? "");
+  const [vendorId, setVendorId] = useState(expense?.vendor_id ?? defaultVendorId ?? "");
   const [newVendorName, setNewVendorName] = useState("");
   const [newVendorContactName, setNewVendorContactName] = useState("");
   const [newVendorContactEmail, setNewVendorContactEmail] = useState("");
