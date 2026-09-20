@@ -304,7 +304,12 @@ export function ExpenseModal({
           <div className="space-y-3">
             {instalments.map((inst, idx) => (
               <div key={idx} className="space-y-2 rounded-xl border border-line p-3">
-                <div className="grid grid-cols-2 gap-2">
+                {/* min-w-0 on each grid item — without it, a native
+                    type="date" input's own intrinsic width can push its
+                    column wider than the grid track it's in, spilling the
+                    input out past the card's edge instead of shrinking to
+                    fit (same fix as TimelineEventModal's Start time). */}
+                <div className="grid grid-cols-2 gap-2 [&>*]:min-w-0">
                   <Input
                     placeholder="Label (optional)"
                     value={inst.label}
@@ -319,6 +324,7 @@ export function ExpenseModal({
                   />
                   <Input
                     type="date"
+                    placeholder="Date due"
                     value={inst.due_date}
                     onChange={(e) => updateInstalment(idx, { due_date: e.target.value })}
                   />
