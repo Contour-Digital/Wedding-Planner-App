@@ -34,9 +34,14 @@ export default function ContactsPage() {
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState({ role: "", name: "", phone: "", email: "" });
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [nameError, setNameError] = useState(false);
 
   async function addContact() {
-    if (!wedding || !draft.name.trim()) return;
+    if (!wedding) return;
+    if (!draft.name.trim()) {
+      setNameError(true);
+      return;
+    }
     await supabase.from("key_contacts").insert({
       wedding_id: wedding.id,
       role: draft.role.trim() || null,
@@ -114,8 +119,14 @@ export default function ContactsPage() {
               <Field label="Role" hint="e.g. Celebrant, MC, Maid of Honour">
                 <Input value={draft.role} onChange={(e) => setDraft({ ...draft, role: e.target.value })} />
               </Field>
-              <Field label="Name">
-                <Input value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
+              <Field label="Name" error={nameError}>
+                <Input
+                  value={draft.name}
+                  onChange={(e) => {
+                    setDraft({ ...draft, name: e.target.value });
+                    if (nameError) setNameError(false);
+                  }}
+                />
               </Field>
               <Field label="Phone">
                 <Input
@@ -131,7 +142,7 @@ export default function ContactsPage() {
                   onChange={(e) => setDraft({ ...draft, email: e.target.value })}
                 />
               </Field>
-              <Button fullWidth onClick={addContact} disabled={!draft.name.trim()}>
+              <Button fullWidth onClick={addContact}>
                 Save contact
               </Button>
             </div>

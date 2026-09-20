@@ -35,9 +35,14 @@ export function TimelineEventModal({
   const [sharedNotes, setSharedNotes] = useState(event?.shared_notes ?? "");
   const [privateNotes, setPrivateNotes] = useState(event?.private_notes ?? "");
   const [saving, setSaving] = useState(false);
+  const [titleError, setTitleError] = useState(false);
 
   async function handleSave() {
-    if (!wedding || !user || !title.trim()) return;
+    if (!wedding || !user) return;
+    if (!title.trim()) {
+      setTitleError(true);
+      return;
+    }
     setSaving(true);
 
     const payload: Record<string, unknown> = {
@@ -75,8 +80,14 @@ export function TimelineEventModal({
   return (
     <Modal open={open} onClose={onClose} title={event ? "Edit run-sheet item" : "Add run-sheet item"}>
       <div className="space-y-4">
-        <Field label="Event name">
-          <Input value={title} onChange={(e) => setTitle(e.target.value)} />
+        <Field label="Event name" error={titleError}>
+          <Input
+            value={title}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              if (titleError) setTitleError(false);
+            }}
+          />
         </Field>
         <Field label="Group">
           <Select value={group} onChange={(e) => setGroup(e.target.value as TimelineGroup)}>

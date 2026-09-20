@@ -53,6 +53,8 @@ export function DocumentManager({
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [openingId, setOpeningId] = useState<string | null>(null);
+  const [titleError, setTitleError] = useState(false);
+  const [sourceError, setSourceError] = useState(false);
 
   function resetDraft() {
     setType("contract");
@@ -60,14 +62,21 @@ export function DocumentManager({
     setUrl("");
     setFile(null);
     setError(null);
+    setTitleError(false);
+    setSourceError(false);
   }
 
   async function addDocument() {
-    if (!title.trim()) return;
+    const missingTitle = !title.trim();
+    const missingSource = mode === "url" ? !url.trim() : !file;
+    if (missingTitle || missingSource) {
+      setTitleError(missingTitle);
+      setSourceError(missingSource);
+      return;
+    }
     setError(null);
 
     if (mode === "url") {
-      if (!url.trim()) return;
       setSaving(true);
       const { error: insertError } = await supabase.from("vendor_documents").insert({
         vendor_id: vendorId,
@@ -158,7 +167,10 @@ export function DocumentManager({
               <button
                 key={m}
                 type="button"
-                onClick={() => setMode(m)}
+                onClick={() => {
+                  setMode(m);
+                  setSourceError(false);
+                }}
                 className={`rounded-full border px-3 py-1.5 text-xs font-medium ${
                   mode === m ? "border-primaryStrong bg-primary/10 text-primaryStrong" : "border-line text-muted"
                 }`}
@@ -174,18 +186,44 @@ export function DocumentManager({
               </option>
             ))}
           </Select>
-          <Input placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
-          {mode === "file" ? (
-            <Input type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
-          ) : (
-            <Input placeholder="Link (URL)" value={url} onChange={(e) => setUrl(e.target.value)} />
-          )}
+          <div>
+            <Input
+              placeholder="Title"
+              value={title}
+              onChange={(e) => {
+                setTitle(e.target.value);
+                if (titleError) setTitleError(false);
+              }}
+              className={titleError ? "border-danger focus:border-danger focus:ring-danger/20" : undefined}
+            />
+            {titleError && <p className="mt-1 text-xs text-danger">Required</p>}
+          </div>
+          <div>
+            {mode === "file" ? (
+              <Input
+                type="file"
+                onChange={(e) => {
+                  setFile(e.target.files?.[0] ?? null);
+                  if (sourceError) setSourceError(false);
+                }}
+              />
+            ) : (
+              <Input
+                placeholder="Link (URL)"
+                value={url}
+                onChange={(e) => {
+                  setUrl(e.target.value);
+                  if (sourceError) setSourceError(false);
+                }}
+                className={sourceError ? "border-danger focus:border-danger focus:ring-danger/20" : undefined}
+              />
+            )}
+            {sourceError && (
+              <p className="mt-1 text-xs text-danger">{mode === "file" ? "Choose a file" : "Required"}</p>
+            )}
+          </div>
           {error && <p className="text-xs text-danger">{error}</p>}
-          <Button
-            fullWidth
-            onClick={addDocument}
-            disabled={saving || !title.trim() || (mode === "file" ? !file : !url.trim())}
-          >
+          <Button fullWidth onClick={addDocument} disabled={saving}>
             {saving ? "Saving…" : "Save document"}
           </Button>
         </div>

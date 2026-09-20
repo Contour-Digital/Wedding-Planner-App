@@ -39,10 +39,14 @@ export function CategoryTabs({
   const supabase = createClient();
   const [adding, setAdding] = useState(false);
   const [newName, setNewName] = useState("");
+  const [newNameError, setNewNameError] = useState(false);
   const [removingCategory, setRemovingCategory] = useState<InspirationCategory | null>(null);
 
   async function addCategory() {
-    if (!newName.trim()) return;
+    if (!newName.trim()) {
+      setNewNameError(true);
+      return;
+    }
     await supabase.from("inspiration_categories").insert({
       wedding_id: weddingId,
       name: newName.trim(),
@@ -92,16 +96,20 @@ export function CategoryTabs({
 
       {adding && (
         <div className="flex gap-2">
-          <Input
-            autoFocus
-            value={newName}
-            onChange={(e) => setNewName(e.target.value)}
-            placeholder="e.g. Florals"
-            className="max-w-xs"
-          />
-          <Button onClick={addCategory} disabled={!newName.trim()}>
-            Add
-          </Button>
+          <div>
+            <Input
+              autoFocus
+              value={newName}
+              onChange={(e) => {
+                setNewName(e.target.value);
+                if (newNameError) setNewNameError(false);
+              }}
+              placeholder="e.g. Florals"
+              className={`max-w-xs ${newNameError ? "border-danger focus:border-danger focus:ring-danger/20" : ""}`}
+            />
+            {newNameError && <p className="mt-1 text-xs text-danger">Required</p>}
+          </div>
+          <Button onClick={addCategory}>Add</Button>
         </div>
       )}
 

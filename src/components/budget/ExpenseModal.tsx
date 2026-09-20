@@ -74,6 +74,8 @@ export function ExpenseModal({
     expense?.instalments.map(toDraft) ?? []
   );
   const [saving, setSaving] = useState(false);
+  const [nameError, setNameError] = useState(false);
+  const [totalAmountError, setTotalAmountError] = useState(false);
 
   function addInstalment() {
     setInstalments([...instalments, { amount: "", due_date: "", paid: false, reminder_days: "", label: "" }]);
@@ -88,7 +90,14 @@ export function ExpenseModal({
   }
 
   async function handleSave() {
-    if (!wedding || !user || !name.trim() || !totalAmount) return;
+    if (!wedding || !user) return;
+    const missingName = !name.trim();
+    const missingTotal = !totalAmount;
+    if (missingName || missingTotal) {
+      setNameError(missingName);
+      setTotalAmountError(missingTotal);
+      return;
+    }
     setSaving(true);
 
     let resolvedVendorId: string | null = null;
@@ -175,8 +184,15 @@ export function ExpenseModal({
   return (
     <Modal open={open} onClose={onClose} title={expense ? "Edit expense" : "Add expense"}>
       <div className="space-y-4">
-        <Field label="Name">
-          <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Photography Package" />
+        <Field label="Name" error={nameError}>
+          <Input
+            value={name}
+            onChange={(e) => {
+              setName(e.target.value);
+              if (nameError) setNameError(false);
+            }}
+            placeholder="Photography Package"
+          />
         </Field>
 
         <Field label="Category">
@@ -245,8 +261,15 @@ export function ExpenseModal({
         </div>
 
         <div className="grid grid-cols-2 gap-3">
-          <Field label="Total cost">
-            <Input type="number" value={totalAmount} onChange={(e) => setTotalAmount(e.target.value)} />
+          <Field label="Total cost" error={totalAmountError}>
+            <Input
+              type="number"
+              value={totalAmount}
+              onChange={(e) => {
+                setTotalAmount(e.target.value);
+                if (totalAmountError) setTotalAmountError(false);
+              }}
+            />
           </Field>
           <Field label="Deposit paid">
             <Input type="number" value={depositAmount} onChange={(e) => setDepositAmount(e.target.value)} />

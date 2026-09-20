@@ -25,13 +25,18 @@ export function CategoryManager() {
   const [editName, setEditName] = useState("");
   const [editTarget, setEditTarget] = useState("");
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [newNameError, setNewNameError] = useState(false);
+  const [editNameError, setEditNameError] = useState(false);
 
   if (!wedding) return null;
 
   const removingCategory = categories.find((c) => c.id === removingId) ?? null;
 
   async function addCategory() {
-    if (!newName.trim()) return;
+    if (!newName.trim()) {
+      setNewNameError(true);
+      return;
+    }
     await supabase.from("expense_categories").insert({
       wedding_id: wedding!.id,
       name: newName.trim(),
@@ -56,9 +61,14 @@ export function CategoryManager() {
     setEditingId(id);
     setEditName(name);
     setEditTarget(String(target));
+    setEditNameError(false);
   }
 
   async function saveEdit(id: string) {
+    if (!editName.trim()) {
+      setEditNameError(true);
+      return;
+    }
     await supabase
       .from("expense_categories")
       .update({ name: editName.trim(), target_budget: Number(editTarget) || 0 })
@@ -97,7 +107,17 @@ export function CategoryManager() {
           <div key={c.id} className="flex items-center gap-2 rounded-xl border border-line p-2.5">
             {editingId === c.id ? (
               <>
-                <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="flex-1" />
+                <div className="flex-1">
+                  <Input
+                    value={editName}
+                    onChange={(e) => {
+                      setEditName(e.target.value);
+                      if (editNameError) setEditNameError(false);
+                    }}
+                    className={editNameError ? "border-danger focus:border-danger focus:ring-danger/20" : undefined}
+                  />
+                  {editNameError && <p className="mt-1 text-xs text-danger">Required</p>}
+                </div>
                 <Input
                   type="number"
                   value={editTarget}
@@ -140,7 +160,16 @@ export function CategoryManager() {
       <div className="flex items-end gap-2 border-t border-line pt-4">
         <div className="flex-1">
           <label className="mb-1 block text-xs font-medium text-muted">New category</label>
-          <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="e.g. Hair & Makeup" />
+          <Input
+            value={newName}
+            onChange={(e) => {
+              setNewName(e.target.value);
+              if (newNameError) setNewNameError(false);
+            }}
+            placeholder="e.g. Hair & Makeup"
+            className={newNameError ? "border-danger focus:border-danger focus:ring-danger/20" : undefined}
+          />
+          {newNameError && <p className="mt-1 text-xs text-danger">Required</p>}
         </div>
         <div className="w-28">
           <label className="mb-1 block text-xs font-medium text-muted">Target</label>

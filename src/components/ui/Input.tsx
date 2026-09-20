@@ -1,13 +1,43 @@
+import { cloneElement, isValidElement } from "react";
 import { clsx } from "clsx";
-import type { InputHTMLAttributes, LabelHTMLAttributes, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
+import type { InputHTMLAttributes, LabelHTMLAttributes, ReactElement, SelectHTMLAttributes, TextareaHTMLAttributes } from "react";
 import { ChevronDownIcon } from "./icons";
 
-export function Field({ label, children, hint }: { label: string; children: React.ReactNode; hint?: string }) {
+// error: true shows the default "Required" message, a string shows that
+// message instead — either way the single Input/Textarea child gets a red
+// border so a field that failed validation on save is obvious at a glance,
+// not just a silent no-op.
+export function Field({
+  label,
+  children,
+  hint,
+  error,
+}: {
+  label: string;
+  children: React.ReactNode;
+  hint?: string;
+  error?: boolean | string;
+}) {
+  const message = error === true ? "Required" : error || null;
+  const child =
+    message && isValidElement(children)
+      ? cloneElement(children as ReactElement<{ className?: string }>, {
+          className: clsx(
+            (children as ReactElement<{ className?: string }>).props.className,
+            "border-danger focus:border-danger focus:ring-danger/20"
+          ),
+        })
+      : children;
+
   return (
     <label className="block space-y-1.5">
       <span className="text-sm font-medium text-ink">{label}</span>
-      {children}
-      {hint && <span className="block text-xs text-muted">{hint}</span>}
+      {child}
+      {message ? (
+        <span className="block text-xs text-danger">{message}</span>
+      ) : (
+        hint && <span className="block text-xs text-muted">{hint}</span>
+      )}
     </label>
   );
 }
