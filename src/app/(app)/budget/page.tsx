@@ -12,11 +12,12 @@ import { categoryTotals, weddingTotals } from "@/lib/utils/budget";
 import { formatCurrency, sum } from "@/lib/utils/currency";
 import { computeExpenseTotals, PAYMENT_STATUS_LABEL } from "@/lib/utils/paymentStatus";
 import { downloadCsv } from "@/lib/utils/csv";
-import { StatCard } from "@/components/ui/Card";
+import { StatCard, Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { CategorySection } from "@/components/budget/CategorySection";
 import { ExpenseModal } from "@/components/budget/ExpenseModal";
 import { BudgetBreakdownChart } from "@/components/budget/BudgetBreakdownChart";
+import { AddCategoryForm } from "@/components/budget/AddCategoryForm";
 import { canEdit } from "@/lib/utils/permissions";
 import type { ExpenseWithInstalments } from "@/lib/types/domain";
 
@@ -149,6 +150,14 @@ export default function BudgetPage() {
             />
           ))}
         </div>
+
+        <Card className="space-y-3">
+          <h3 className="font-display text-lg font-semibold">Add category</h3>
+          <AddCategoryForm categories={categories} onAdded={refreshCategories} />
+          <Link href="/budget/categories" className="inline-block text-sm font-medium text-primaryStrong">
+            Manage categories (rename, targets, remove) →
+          </Link>
+        </Card>
       </div>
 
       <ExpenseModal
