@@ -47,31 +47,28 @@ export function DocumentManager({
   const [adding, setAdding] = useState(false);
   const [mode, setMode] = useState<"file" | "url">("file");
   const [type, setType] = useState<VendorDocumentType>("contract");
-  const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [openingId, setOpeningId] = useState<string | null>(null);
-  const [titleError, setTitleError] = useState(false);
   const [sourceError, setSourceError] = useState(false);
 
   function resetDraft() {
     setType("contract");
-    setTitle("");
     setUrl("");
     setFile(null);
     setError(null);
-    setTitleError(false);
     setSourceError(false);
   }
 
+  // No Title field — the file's own name, or the URL itself, is the title,
+  // since vendor_documents.title is NOT NULL and there's nothing else to
+  // derive it from.
   async function addDocument() {
-    const missingTitle = !title.trim();
     const missingSource = mode === "url" ? !url.trim() : !file;
-    if (missingTitle || missingSource) {
-      setTitleError(missingTitle);
-      setSourceError(missingSource);
+    if (missingSource) {
+      setSourceError(true);
       return;
     }
     setError(null);
@@ -81,7 +78,7 @@ export function DocumentManager({
       const { error: insertError } = await supabase.from("vendor_documents").insert({
         vendor_id: vendorId,
         type,
-        title: title.trim(),
+        title: url.trim(),
         external_url: url.trim(),
       });
       setSaving(false);
@@ -102,7 +99,7 @@ export function DocumentManager({
       const { error: insertError } = await supabase.from("vendor_documents").insert({
         vendor_id: vendorId,
         type,
-        title: title.trim(),
+        title: file.name,
         storage_path: path,
       });
       setSaving(false);
@@ -186,18 +183,6 @@ export function DocumentManager({
               </option>
             ))}
           </Select>
-          <div>
-            <Input
-              placeholder="Title"
-              value={title}
-              onChange={(e) => {
-                setTitle(e.target.value);
-                if (titleError) setTitleError(false);
-              }}
-              className={titleError ? "border-danger focus:border-danger focus:ring-danger/20" : undefined}
-            />
-            {titleError && <p className="mt-1 text-xs text-danger">Required</p>}
-          </div>
           <div>
             {mode === "file" ? (
               <Input
