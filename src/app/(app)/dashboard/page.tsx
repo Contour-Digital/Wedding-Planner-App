@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import Link from "next/link";
 import { PageHeader } from "@/components/nav/PageHeader";
 import { useWedding } from "@/lib/wedding/WeddingProvider";
@@ -10,6 +11,7 @@ import { useTimeline } from "@/lib/hooks/useTimeline";
 import { weddingTotals } from "@/lib/utils/budget";
 import { formatCurrency } from "@/lib/utils/currency";
 import { StatCard, Card } from "@/components/ui/Card";
+import { UpcomingPaymentsModal } from "@/components/budget/UpcomingPaymentsModal";
 import { formatDate, formatTime, isDueThisMonth, isOverdue, weddingCountdown } from "@/lib/utils/date";
 import { canSeeFinancials, isTimelineOnly } from "@/lib/utils/permissions";
 import { TIMELINE_GROUP_LABEL } from "@/components/wedding-day/timelineMeta";
@@ -21,6 +23,7 @@ export default function DashboardPage() {
   const { tasks } = useTasks(weddingId);
   const { vendors } = useVendors(weddingId);
   const { events } = useTimeline(weddingId);
+  const [upcomingOpen, setUpcomingOpen] = useState(false);
 
   const showFinancials = canSeeFinancials(role);
   const timelineOnly = isTimelineOnly(role);
@@ -86,9 +89,12 @@ export default function DashboardPage() {
                   <p className="text-sm text-muted">No upcoming payments.</p>
                 )}
               </div>
-              <Link href="/budget/upcoming" className="mt-3 inline-block text-sm font-medium text-primaryStrong">
+              <button
+                onClick={() => setUpcomingOpen(true)}
+                className="mt-3 text-sm font-medium text-primaryStrong"
+              >
                 View all upcoming payments →
-              </Link>
+              </button>
             </div>
           </section>
         )}
@@ -146,6 +152,14 @@ export default function DashboardPage() {
           </>
         )}
       </div>
+
+      <UpcomingPaymentsModal
+        open={upcomingOpen}
+        onClose={() => setUpcomingOpen(false)}
+        expenses={expenses}
+        vendors={vendors}
+        currency={wedding?.currency}
+      />
     </div>
   );
 }

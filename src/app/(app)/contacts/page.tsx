@@ -8,7 +8,6 @@ import { useKeyContacts } from "@/lib/hooks/useKeyContacts";
 import { useDayOfVendorContacts } from "@/lib/hooks/useDayOfVendorContacts";
 import { createClient } from "@/lib/supabase/client";
 import { Card } from "@/components/ui/Card";
-import { Badge } from "@/components/ui/Badge";
 import { Button } from "@/components/ui/Button";
 import { Field, Input } from "@/components/ui/Input";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
@@ -35,6 +34,9 @@ export default function ContactsPage() {
   const [draft, setDraft] = useState({ role: "", name: "", phone: "", email: "" });
   const [removingId, setRemovingId] = useState<string | null>(null);
   const [nameError, setNameError] = useState(false);
+  const [editingId, setEditingId] = useState<string | null>(null);
+  const [editDraft, setEditDraft] = useState({ role: "", name: "", phone: "", email: "" });
+  const [editNameError, setEditNameError] = useState(false);
 
   async function addContact() {
     if (!wedding) return;
@@ -58,6 +60,36 @@ export default function ContactsPage() {
   async function removeContact(id: string) {
     setRemovingId(null);
     await supabase.from("key_contacts").delete().eq("id", id);
+    refresh();
+  }
+
+  function startEdit(contact: { id: string; role: string | null; name: string; phone: string | null; email: string | null }) {
+    setEditingId(contact.id);
+    setEditDraft({
+      role: contact.role ?? "",
+      name: contact.name,
+      phone: contact.phone ?? "",
+      email: contact.email ?? "",
+    });
+    setEditNameError(false);
+    setAdding(false);
+  }
+
+  async function saveEdit(id: string) {
+    if (!editDraft.name.trim()) {
+      setEditNameError(true);
+      return;
+    }
+    await supabase
+      .from("key_contacts")
+      .update({
+        role: editDraft.role.trim() || null,
+        name: editDraft.name.trim(),
+        phone: editDraft.phone.trim() || null,
+        email: editDraft.email.trim() || null,
+      })
+      .eq("id", id);
+    setEditingId(null);
     refresh();
   }
 
@@ -149,31 +181,77 @@ export default function ContactsPage() {
           )}
 
           <div className="space-y-2">
-            {contacts.map((c) => (
-              <div key={c.id} className="flex items-start justify-between rounded-xl border border-line p-3">
-                <div>
-                  {c.role && <p className="text-xs font-medium uppercase tracking-wide text-muted">{c.role}</p>}
-                  <p className="text-sm font-medium">{c.name}</p>
-                  <PhoneLink phone={c.phone} />
-                  {c.email && <p className="text-xs text-muted">{c.email}</p>}
+            {contacts.map((c) =>
+              editingId === c.id ? (
+                <div key={c.id} className="space-y-2 rounded-xl border border-line p-3">
+                  <Input
+                    placeholder="Role"
+                    value={editDraft.role}
+                    onChange={(e) => setEditDraft({ ...editDraft, role: e.target.value })}
+                  />
+                  <div>
+                    <Input
+                      placeholder="Name"
+                      value={editDraft.name}
+                      onChange={(e) => {
+                        setEditDraft({ ...editDraft, name: e.target.value });
+                        if (editNameError) setEditNameError(false);
+                      }}
+                      className={editNameError ? "border-danger focus:border-danger focus:ring-danger/20" : undefined}
+                    />
+                    {editNameError && <p className="mt-1 text-xs text-danger">Required</p>}
+                  </div>
+                  <Input
+                    placeholder="Phone"
+                    value={editDraft.phone}
+                    onChange={(e) => setEditDraft({ ...editDraft, phone: e.target.value })}
+                  />
+                  <Input
+                    placeholder="Email"
+                    value={editDraft.email}
+                    onChange={(e) => setEditDraft({ ...editDraft, email: e.target.value })}
+                  />
+                  <div className="flex gap-2">
+                    <Button fullWidth onClick={() => saveEdit(c.id)}>
+                      Save
+                    </Button>
+                    <Button fullWidth variant="secondary" onClick={() => setEditingId(null)}>
+                      Cancel
+                    </Button>
+                  </div>
                 </div>
-                {editable && (
-                  <button onClick={() => setRemovingId(c.id)} className="text-xs text-danger">
-                    Remove
-                  </button>
-                )}
-              </div>
-            ))}
+              ) : (
+                <div key={c.id} className="flex items-start justify-between rounded-xl border border-line p-3">
+                  <div>
+                    {c.role && <p className="text-xs font-medium uppercase tracking-wide text-muted">{c.role}</p>}
+                    <p className="text-sm font-medium">{c.name}</p>
+                    <PhoneLink phone={c.phone} />
+                    {c.email && <p className="text-xs text-muted">{c.email}</p>}
+                  </div>
+                  {editable && (
+                    <div className="flex shrink-0 items-center gap-3">
+                      <button onClick={() => startEdit(c)} className="text-xs font-medium text-primaryStrong">
+                        Edit
+                      </button>
+                      <button onClick={() => setRemovingId(c.id)} className="text-xs text-danger">
+                        Remove
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )
+            )}
             {vendorContacts.map((c) => (
               <div key={c.id} className="flex items-start justify-between rounded-xl border border-line p-3">
                 <div>
-                  <div className="flex flex-wrap items-center gap-1.5">
-                    {/* Their role (e.g. "Caterer"), not the vendor's business
-                        name — this tab is about who to call, and the role
-                        says why, same as a key contact's role does. Falls
-                        back to the business name only if no role was set. */}
-                    <Badge className="bg-line text-muted">{c.role || c.vendor_name}</Badge>
-                  </div>
+                  {/* Their role (e.g. "Caterer"), not the vendor's business
+                      name — this tab is about who to call, and the role
+                      says why, same as a key contact's role does. Falls
+                      back to the business name only if no role was set.
+                      Styled the same as a key contact's role for consistency. */}
+                  {(c.role || c.vendor_name) && (
+                    <p className="text-xs font-medium uppercase tracking-wide text-muted">{c.role || c.vendor_name}</p>
+                  )}
                   <p className="text-sm font-medium">{c.name}</p>
                   <PhoneLink phone={c.phone} />
                   {c.email && <p className="text-xs text-muted">{c.email}</p>}
