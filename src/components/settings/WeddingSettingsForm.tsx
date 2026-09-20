@@ -44,6 +44,11 @@ export function WeddingSettingsForm() {
 
     const payload = {
       ...form,
+      // An <input type="time"> sends "" when cleared, not null — Postgres
+      // rejects that for a time column ("invalid input syntax"), which in
+      // practice made this field impossible to leave blank once it had ever
+      // held a value, despite there being no `required` on the input itself.
+      ceremony_time: form.ceremony_time || null,
       guest_count: form.guest_count ? Number(form.guest_count) : null,
       total_budget: Number(form.total_budget) || 0,
     };
