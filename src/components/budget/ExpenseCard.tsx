@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { Card } from "@/components/ui/Card";
 import { PaymentStatusBadge } from "./PaymentStatusBadge";
 import { formatCurrency } from "@/lib/utils/currency";
 import { formatDate } from "@/lib/utils/date";
@@ -51,7 +50,10 @@ export function ExpenseCard({
   }
 
   return (
-    <Card>
+    // Light grey, not another white Card — these sit nested inside the
+    // category's own (white) Card, so they need to read as "within it"
+    // rather than as their own separate boxes.
+    <div className="rounded-xl bg-line/40 p-4 sm:p-5">
       <div className="flex items-start justify-between gap-3">
         <div>
           <p className="font-medium">{expense.name}</p>
@@ -111,6 +113,6 @@ export function ExpenseCard({
       <button onClick={onEdit} className="mt-3 text-xs font-medium text-primaryStrong">
         Edit expense
       </button>
-    </Card>
+    </div>
   );
 }

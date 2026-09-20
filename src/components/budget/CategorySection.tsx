@@ -24,8 +24,8 @@ export function CategorySection({
   const pct = totals.targetBudget > 0 ? (totals.committed / totals.targetBudget) * 100 : 0;
 
   return (
-    <section className="space-y-3">
-      <Card>
+    <Card className="space-y-4">
+      <div>
         <div className="flex items-baseline justify-between">
           <h3 className="font-display text-lg font-semibold">{totals.name}</h3>
           <span className="text-xs text-muted">Target {formatCurrency(totals.targetBudget, currency)}</span>
@@ -39,10 +39,10 @@ export function CategorySection({
             Remaining: {formatCurrency(totals.remainingAgainstTarget, currency)}
           </div>
         </div>
-      </Card>
+      </div>
 
       {expenses.length > 0 && (
-        <div className="space-y-2 pl-1">
+        <div className="space-y-2 border-t border-line pt-4">
           {expenses.map((expense) => (
             <ExpenseCard
               key={expense.id}
@@ -55,6 +55,6 @@ export function CategorySection({
           ))}
         </div>
       )}
-    </section>
+    </Card>
   );
 }
