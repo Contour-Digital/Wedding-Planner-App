@@ -45,14 +45,22 @@ can be added the same way without touching existing modules.
    (or `supabase db push` if you're using the CLI). This creates every table, the RLS policies, the
    ceremony-time-sync trigger, the `timeline_events_shared` view, and a `create_wedding_for_current_user`
    helper function used by the onboarding screen.
-3. **Copy `.env.example` to `.env.local`** and fill in your project's URL and anon key (Project
-   Settings → API in the Supabase dashboard).
-4. **Install and run**:
+3. **Copy `.env.example` to `.env.local`** and fill in your project's URL, anon key, and
+   `SUPABASE_SERVICE_ROLE_KEY` (all under Project Settings → API in the Supabase dashboard). The
+   service role key powers `/api/invite`, which actually sends invite emails via Supabase Auth —
+   without it, Sharing invites fail with a clear "not configured" error instead of silently doing
+   nothing. **On Vercel, add `SUPABASE_SERVICE_ROLE_KEY` as a Project → Settings → Environment
+   Variables entry (not prefixed with `NEXT_PUBLIC_`, so it never reaches the browser) and redeploy.**
+4. **Optional — Reply-To on invite emails**: sign up at resend.com (free tier), verify a sending
+   domain, and add `RESEND_API_KEY` + `RESEND_FROM_EMAIL` to `.env.local` / Vercel. Without this,
+   invites still send fine via Supabase's own email — you just don't get the couple's `joint_email`
+   as Reply-To.
+5. **Install and run**:
    ```
    npm install
    npm run dev
    ```
-5. Sign up, name the couple, and you're in. Invite a second account (or another browser/incognito
+6. Sign up, name the couple, and you're in. Invite a second account (or another browser/incognito
    window) via Settings → Sharing to see live sync in action.
 
 > Note: this environment's sandbox could not reach the npm registry to install dependencies or run a
@@ -86,6 +94,20 @@ can be added the same way without touching existing modules.
 - **Print run sheet**: `/wedding-day/print` reads only shared timeline fields (no private notes, no
   money) and uses `window.print()`; the app's `no-print` utility class hides all navigation chrome
   in print media via `globals.css`.
+- **Sharing invites send a real email**: `POST /api/invite` runs server-side (never in the browser)
+  with the service-role key, verifies the caller actually owns the wedding, then either:
+  - sends Supabase Auth's own built-in invite email (zero extra setup, no custom Reply-To), or
+  - if `RESEND_API_KEY` is set, generates the invite link via Supabase but sends the actual email
+    itself through Resend, with **Reply-To set to the couple's `joint_email`** (from
+    onboarding/Settings, falling back to the inviting owner's own account email) — so when the
+    invitee hits "reply", it goes straight to the couple, not the app. This is deliberately a
+    Reply-To rather than a spoofed *From* address: mailbox providers (Gmail, Outlook, etc.) reject
+    or spam-flag mail claiming to be "from" an address the sending service doesn't control, so
+    faking the couple's own address as the sender isn't viable — Reply-To is the standard pattern
+    for "invite on behalf of" emails (calendar invites, shared docs, etc. all do this).
+  Either way, if the invitee already has an account, no email is sent — they're just granted access
+  immediately. Customise Supabase's own template under dashboard → Authentication → Email
+  Templates → "Invite user"; the Resend template lives directly in `src/app/api/invite/route.ts`.
 
 ## What's intentionally deferred (and how to pick it up)
 
