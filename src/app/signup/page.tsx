@@ -15,12 +15,6 @@ export default function SignupPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
-  const [confirmationSent, setConfirmationSent] = useState(false);
-  const [code, setCode] = useState("");
-  const [verifying, setVerifying] = useState(false);
-  const [verifyError, setVerifyError] = useState<string | null>(null);
-  const [resending, setResending] = useState(false);
-  const [resent, setResent] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
@@ -37,95 +31,18 @@ export default function SignupPage() {
       return;
     }
 
-    // If Supabase has "Confirm email" turned on (the default), signUp()
-    // succeeds but returns no session until the confirmation code is
-    // entered — sending them to onboarding now would fail, since the
-    // database needs an authenticated user to create the wedding. Show a
-    // code-entry screen instead of redirecting blind.
+    // Requires "Confirm email" turned off in Supabase (Authentication ->
+    // Providers -> Email) — with it off, signUp() always returns a session
+    // immediately, no confirmation step. This is a fallback for the
+    // unexpected case where it's still on, rather than a full confirmation
+    // flow of its own.
     if (!data.session) {
-      setConfirmationSent(true);
+      setError("Your account was created, but couldn't sign you in automatically — try signing in instead.");
       return;
     }
 
     router.replace("/onboarding");
     router.refresh();
-  }
-
-  // Verifies the same 6-digit code embedded in the confirmation email's
-  // {{ .Token }} — not the {{ .ConfirmationURL }} link, which depends on
-  // Supabase's configured Site URL and can end up somewhere unexpected
-  // (e.g. a Vercel preview domain behind Deployment Protection) rather than
-  // this app. Entering the code here never leaves the app at all.
-  async function handleVerify(e: React.FormEvent) {
-    e.preventDefault();
-    setVerifying(true);
-    setVerifyError(null);
-    const { error } = await supabase.auth.verifyOtp({ email, token: code.trim(), type: "signup" });
-    setVerifying(false);
-    if (error) {
-      setVerifyError(
-        error.message.toLowerCase().includes("expired") || error.message.toLowerCase().includes("invalid")
-          ? "That code isn't right or has expired — check for typos, or resend a new one."
-          : error.message
-      );
-      return;
-    }
-    router.replace("/onboarding");
-    router.refresh();
-  }
-
-  async function handleResend() {
-    setResending(true);
-    setVerifyError(null);
-    setResent(false);
-    const { error } = await supabase.auth.resend({ type: "signup", email });
-    setResending(false);
-    if (error) {
-      setVerifyError(error.message);
-      return;
-    }
-    setResent(true);
-  }
-
-  if (confirmationSent) {
-    return (
-      <div className="flex min-h-screen items-center justify-center bg-white px-4">
-        <div className="w-full max-w-sm space-y-4 text-center">
-          <h1 className="font-display text-2xl font-semibold text-ink">Check your inbox</h1>
-          <p className="text-sm text-muted">
-            We&apos;ve sent a 6-digit code to <span className="font-medium text-ink">{email}</span>. Enter it
-            below to confirm your account.
-          </p>
-          <form onSubmit={handleVerify} className="space-y-3 text-left">
-            <Field label="Confirmation code">
-              <Input
-                inputMode="numeric"
-                autoComplete="one-time-code"
-                value={code}
-                onChange={(e) => setCode(e.target.value)}
-                placeholder="Enter the code from your email"
-              />
-            </Field>
-            {verifyError && <p className="text-sm text-danger">{verifyError}</p>}
-            {resent && <p className="text-sm text-good">New code sent.</p>}
-            <Button type="submit" fullWidth disabled={verifying || !code.trim()}>
-              {verifying ? "Confirming…" : "Confirm and continue"}
-            </Button>
-            <button
-              type="button"
-              onClick={handleResend}
-              disabled={resending}
-              className="w-full text-center text-sm font-medium text-primaryStrong disabled:opacity-60"
-            >
-              {resending ? "Resending…" : "Resend code"}
-            </button>
-          </form>
-          <Link href="/login" className="inline-block pt-2 text-sm font-medium text-primaryStrong">
-            Go to sign in →
-          </Link>
-        </div>
-      </div>
-    );
   }
 
   return (
