@@ -180,11 +180,11 @@ export default function ExportBinderPage() {
       <Section title="Budget">
         <div className="grid grid-cols-3 gap-2 text-sm sm:grid-cols-5">
           {[
-            ["Total budget", totals.totalBudget],
+            ["Ideal Budget", totals.totalBudget],
             ["Committed", totals.committed],
             ["Paid", totals.paid],
             ["Outstanding", totals.outstanding],
-            ["Remaining", totals.remaining],
+            ["Budget Remaining", totals.remaining],
           ].map(([label, value]) => (
             <div key={label as string}>
               <p className="text-xs text-muted">{label}</p>

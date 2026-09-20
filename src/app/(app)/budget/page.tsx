@@ -113,13 +113,13 @@ export default function BudgetPage() {
       <PageHeader title="Budget" />
       <div className="space-y-6 p-4 sm:p-6">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-6">
-          <StatCard label="Expected Costs" value={formatCurrency(expectedCosts, wedding?.currency)} />
-          <StatCard label="Total Budget" value={formatCurrency(totals.totalBudget, wedding?.currency)} />
+          <StatCard label="Total Budget" value={formatCurrency(expectedCosts, wedding?.currency)} />
+          <StatCard label="Ideal Budget" value={formatCurrency(totals.totalBudget, wedding?.currency)} />
           <StatCard label="Committed" value={formatCurrency(totals.committed, wedding?.currency)} />
           <StatCard label="Paid" value={formatCurrency(totals.paid, wedding?.currency)} tone="good" />
           <StatCard label="Outstanding" value={formatCurrency(totals.outstanding, wedding?.currency)} tone="warn" />
           <StatCard
-            label="Remaining"
+            label="Budget Remaining"
             value={formatCurrency(totals.remaining, wedding?.currency)}
             tone={totals.remaining < 0 ? "danger" : "default"}
           />
@@ -155,7 +155,7 @@ export default function BudgetPage() {
           <h3 className="font-display text-lg font-semibold">Add category</h3>
           <AddCategoryForm categories={categories} onAdded={refreshCategories} />
           <Link href="/budget/categories" className="inline-block text-sm font-medium text-primaryStrong">
-            Manage categories (rename, targets, remove) →
+            Manage categories (rename, budgets, remove) →
           </Link>
         </Card>
       </div>

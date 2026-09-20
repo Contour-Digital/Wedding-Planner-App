@@ -200,7 +200,7 @@ export function WeddingSettingsForm() {
       <div>
         <h3 className="font-display text-lg font-semibold">Overall budget</h3>
         <div className="mt-3">
-          <Field label="Total wedding budget" hint="Shown on the Dashboard and Budget pages">
+          <Field label="Ideal wedding budget" hint="Shown on the Dashboard and Budget pages">
             <Input
               type="number"
               min="0"

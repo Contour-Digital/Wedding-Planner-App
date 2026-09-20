@@ -28,7 +28,7 @@ export function CategorySection({
       <div>
         <div className="flex items-baseline justify-between">
           <h3 className="font-display text-lg font-semibold">{totals.name}</h3>
-          <span className="text-xs text-muted">Target {formatCurrency(totals.targetBudget, currency)}</span>
+          <span className="text-xs text-muted">Budget {formatCurrency(totals.targetBudget, currency)}</span>
         </div>
         <ProgressBar value={pct} className="my-3" />
         <div className="grid grid-cols-2 gap-2 text-xs text-muted sm:grid-cols-4">
