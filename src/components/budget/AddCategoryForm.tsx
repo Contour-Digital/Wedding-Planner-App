@@ -68,7 +68,7 @@ export function AddCategoryForm({
         {nameError && <p className="mt-1 text-xs text-danger">Required</p>}
       </div>
       <div className="w-28">
-        <label className="mb-1 block text-xs font-medium text-muted">Target</label>
+        <label className="mb-1 block text-xs font-medium text-muted">Budget</label>
         <Input type="number" value={target} onChange={(e) => setTarget(e.target.value)} />
       </div>
       <Button onClick={addCategory}>Add</Button>

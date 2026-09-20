@@ -107,7 +107,7 @@ export function CategoryManager() {
               <>
                 <div className="flex-1">
                   <p className="text-sm font-medium">{c.name}</p>
-                  <p className="text-xs text-muted">Target {formatCurrency(c.target_budget, wedding.currency)}</p>
+                  <p className="text-xs text-muted">Budget {formatCurrency(c.target_budget, wedding.currency)}</p>
                 </div>
                 {!c.is_uncategorised && (
                   <>

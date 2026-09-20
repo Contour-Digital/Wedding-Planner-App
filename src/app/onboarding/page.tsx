@@ -19,7 +19,7 @@ const STEP_LABELS = [
   "Currency",
   "Overall budget",
   "Categories",
-  "Budget targets",
+  "Category budgets",
 ];
 const TOTAL_STEPS = STEP_LABELS.length;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
@@ -440,8 +440,8 @@ export default function OnboardingPage() {
               </p>
             </div>
             <Field
-              label="Total wedding budget"
-              hint="Optional — skip it and the category targets on the next steps will add up to your total instead"
+              label="Ideal wedding budget"
+              hint="Optional — skip it and the category budgets on the next steps will add up to your total instead"
             >
               <Input
                 type="number"
@@ -488,7 +488,7 @@ export default function OnboardingPage() {
         {step === 7 && (
           <div className="space-y-4">
             <div>
-              <h1 className="font-display text-2xl font-semibold text-ink">Set a target for each category</h1>
+              <h1 className="font-display text-2xl font-semibold text-ink">Set a budget for each category</h1>
               <p className="mt-1 text-sm text-muted">
                 Type your own numbers, or auto-fill starting figures based on a rough Australian per-guest average
                 and your guest count{guestCountNumber === 0 && " (enter a guest count on the previous step first)"}.
@@ -511,7 +511,7 @@ export default function OnboardingPage() {
               ))}
             </div>
             <p className="text-sm font-medium text-ink">
-              Total target budget: {formatCurrency(totalTarget, currency)}
+              Total budget: {formatCurrency(totalTarget, currency)}
             </p>
           </div>
         )}
