@@ -7,7 +7,8 @@ import { logActivity } from "@/lib/activity/logActivity";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Select, Textarea } from "@/components/ui/Input";
-import type { ExpenseCategory, ExpenseInstalment, ReminderDays } from "@/lib/types/database";
+import { formatCurrency, sum } from "@/lib/utils/currency";
+import type { ExpenseCategory, ExpenseInstalment, InstalmentKind, ReminderDays } from "@/lib/types/database";
 import type { ExpenseWithInstalments } from "@/lib/types/domain";
 import type { VendorWithRelations } from "@/lib/hooks/useVendors";
 
@@ -18,6 +19,7 @@ interface DraftInstalment {
   paid: boolean;
   reminder_days: string;
   label: string;
+  kind: InstalmentKind;
 }
 
 const REMINDER_OPTIONS: { value: string; label: string }[] = [
@@ -36,6 +38,7 @@ function toDraft(i: ExpenseInstalment): DraftInstalment {
     paid: i.paid,
     reminder_days: i.reminder_days != null ? String(i.reminder_days) : "",
     label: i.label ?? "",
+    kind: i.kind,
   };
 }
 
@@ -78,7 +81,10 @@ export function ExpenseModal({
   const [totalAmountError, setTotalAmountError] = useState(false);
 
   function addInstalment() {
-    setInstalments([...instalments, { amount: "", due_date: "", paid: false, reminder_days: "", label: "" }]);
+    setInstalments([
+      ...instalments,
+      { amount: "", due_date: "", paid: false, reminder_days: "", label: "", kind: "balance" },
+    ]);
   }
 
   function updateInstalment(index: number, patch: Partial<DraftInstalment>) {
@@ -87,6 +93,16 @@ export function ExpenseModal({
 
   function removeInstalment(index: number) {
     setInstalments(instalments.filter((_, idx) => idx !== index));
+  }
+
+  // A "Balance" instalment's amount is never typed in — it's always
+  // whatever's left of the total once the deposit and every other
+  // instalment (kept as entered, not recomputed) are accounted for.
+  function balanceAmountFor(index: number) {
+    const otherAmounts = sum(
+      instalments.filter((_, i) => i !== index).map((i) => Number(i.amount) || 0)
+    );
+    return Math.max((Number(totalAmount) || 0) - (Number(depositAmount) || 0) - otherAmounts, 0);
   }
 
   async function handleSave() {
@@ -148,16 +164,20 @@ export function ExpenseModal({
         await supabase.from("expense_instalments").delete().in("id", removedIds);
       }
 
-      for (const inst of instalments) {
-        if (!inst.amount) continue;
+      for (const [idx, inst] of instalments.entries()) {
+        // A custom instalment left blank is a row the couple never
+        // finished filling in — skip it. A balance instalment has no
+        // manual amount to leave blank, so it's always saved.
+        if (inst.kind === "custom" && !inst.amount) continue;
         const instPayload = {
           expense_id: expenseId,
-          amount: Number(inst.amount) || 0,
+          amount: inst.kind === "balance" ? balanceAmountFor(idx) : Number(inst.amount) || 0,
           due_date: inst.due_date || null,
           paid: inst.paid,
           paid_date: inst.paid ? new Date().toISOString().slice(0, 10) : null,
           reminder_days: inst.reminder_days ? (Number(inst.reminder_days) as ReminderDays) : null,
-          label: inst.label || null,
+          label: inst.kind === "balance" ? null : inst.label || null,
+          kind: inst.kind,
         };
         if (inst.id) {
           await supabase.from("expense_instalments").update(instPayload).eq("id", inst.id);
@@ -310,18 +330,36 @@ export function ExpenseModal({
                     input out past the card's edge instead of shrinking to
                     fit (same fix as TimelineEventModal's Start time). */}
                 <div className="grid grid-cols-2 gap-2 [&>*]:min-w-0">
-                  <Input
-                    placeholder="Label (optional)"
-                    value={inst.label}
-                    onChange={(e) => updateInstalment(idx, { label: e.target.value })}
+                  <Select
+                    value={inst.kind}
+                    onChange={(e) => updateInstalment(idx, { kind: e.target.value as InstalmentKind })}
                     className="col-span-2"
-                  />
-                  <Input
-                    type="number"
-                    placeholder="Amount"
-                    value={inst.amount}
-                    onChange={(e) => updateInstalment(idx, { amount: e.target.value })}
-                  />
+                  >
+                    <option value="balance">Balance</option>
+                    <option value="custom">Custom</option>
+                  </Select>
+                  {inst.kind === "custom" && (
+                    <Input
+                      placeholder="Label (optional)"
+                      value={inst.label}
+                      onChange={(e) => updateInstalment(idx, { label: e.target.value })}
+                      className="col-span-2"
+                    />
+                  )}
+                  {inst.kind === "custom" ? (
+                    <Input
+                      type="number"
+                      placeholder="Amount"
+                      value={inst.amount}
+                      onChange={(e) => updateInstalment(idx, { amount: e.target.value })}
+                    />
+                  ) : (
+                    // Read-only — a Balance instalment's amount is always
+                    // computed, never typed in directly.
+                    <div className="flex min-h-[44px] items-center rounded-xl border border-line bg-line/40 px-3.5 text-base text-ink">
+                      {formatCurrency(balanceAmountFor(idx), wedding?.currency)}
+                    </div>
+                  )}
                   <Input
                     type="date"
                     placeholder="Date due"
