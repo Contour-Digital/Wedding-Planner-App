@@ -101,10 +101,9 @@ export default function SignupPage() {
               <Input
                 inputMode="numeric"
                 autoComplete="one-time-code"
-                maxLength={6}
                 value={code}
                 onChange={(e) => setCode(e.target.value)}
-                placeholder="123456"
+                placeholder="Enter the code from your email"
               />
             </Field>
             {verifyError && <p className="text-sm text-danger">{verifyError}</p>}
