@@ -64,6 +64,9 @@ export function ExpenseModal({
   );
   const [vendorId, setVendorId] = useState(expense?.vendor_id ?? "");
   const [newVendorName, setNewVendorName] = useState("");
+  const [newVendorContactName, setNewVendorContactName] = useState("");
+  const [newVendorContactEmail, setNewVendorContactEmail] = useState("");
+  const [newVendorContactPhone, setNewVendorContactPhone] = useState("");
   const [totalAmount, setTotalAmount] = useState(expense ? String(expense.total_amount) : "");
   const [depositAmount, setDepositAmount] = useState(expense ? String(expense.deposit_amount) : "0");
   const [notes, setNotes] = useState(expense?.notes ?? "");
@@ -97,6 +100,15 @@ export function ExpenseModal({
         .select()
         .single();
       resolvedVendorId = vendorRow?.id ?? null;
+
+      if (resolvedVendorId && newVendorContactName.trim()) {
+        await supabase.from("vendor_contacts").insert({
+          vendor_id: resolvedVendorId,
+          name: newVendorContactName.trim(),
+          email: newVendorContactEmail.trim() || null,
+          phone: newVendorContactPhone.trim() || null,
+        });
+      }
     }
 
     const payload = {
@@ -202,11 +214,31 @@ export function ExpenseModal({
             </Select>
           )}
           {vendorMode === "new" && (
-            <Input
-              value={newVendorName}
-              onChange={(e) => setNewVendorName(e.target.value)}
-              placeholder="Vendor / business name"
-            />
+            <div className="space-y-2">
+              <Input
+                value={newVendorName}
+                onChange={(e) => setNewVendorName(e.target.value)}
+                placeholder="Vendor / business name"
+              />
+              <p className="text-xs text-muted">Contact details (optional) — can also be added later on the vendor&apos;s page</p>
+              <Input
+                value={newVendorContactName}
+                onChange={(e) => setNewVendorContactName(e.target.value)}
+                placeholder="Contact name"
+              />
+              <Input
+                type="email"
+                value={newVendorContactEmail}
+                onChange={(e) => setNewVendorContactEmail(e.target.value)}
+                placeholder="Contact email"
+              />
+              <Input
+                type="tel"
+                value={newVendorContactPhone}
+                onChange={(e) => setNewVendorContactPhone(e.target.value)}
+                placeholder="Contact phone"
+              />
+            </div>
           )}
         </div>
 
