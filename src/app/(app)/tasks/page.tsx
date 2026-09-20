@@ -4,6 +4,7 @@ import { useState } from "react";
 import { PageHeader } from "@/components/nav/PageHeader";
 import { useWedding } from "@/lib/wedding/WeddingProvider";
 import { useTasks } from "@/lib/hooks/useTasks";
+import { useMembers } from "@/lib/hooks/useMembers";
 import { Button } from "@/components/ui/Button";
 import { TaskRow } from "@/components/tasks/TaskRow";
 import { TaskModal } from "@/components/tasks/TaskModal";
@@ -14,6 +15,7 @@ type Filter = "open" | "completed" | "all";
 export default function TasksPage() {
   const { wedding } = useWedding();
   const { tasks, refresh } = useTasks(wedding?.id);
+  const { members } = useMembers(wedding?.id);
   const [filter, setFilter] = useState<Filter>("open");
   const [modalOpen, setModalOpen] = useState(false);
   const [editingTask, setEditingTask] = useState<Task | null>(null);
@@ -28,6 +30,29 @@ export default function TasksPage() {
     if (filter === "completed") return t.completed;
     return true;
   });
+
+  // Grouped by assignee instead of one flat list — named people first (in
+  // the order they joined), then joint tasks, then whatever's still
+  // unassigned. Only groups that actually have a task in the current
+  // filter get a heading.
+  const people = members.filter((m) => m.user_id);
+  const groups = [
+    ...people.map((person) => ({
+      key: person.user_id as string,
+      label: person.profile?.full_name ?? person.profile?.email ?? "Member",
+      tasks: filtered.filter((t) => !t.assigned_to_both && t.assigned_user_id === person.user_id),
+    })),
+    {
+      key: "both",
+      label: "Both partners",
+      tasks: filtered.filter((t) => t.assigned_to_both),
+    },
+    {
+      key: "unassigned",
+      label: "Unassigned",
+      tasks: filtered.filter((t) => !t.assigned_to_both && !t.assigned_user_id),
+    },
+  ].filter((group) => group.tasks.length > 0);
 
   function openAdd() {
     setEditingTask(null);
@@ -62,11 +87,18 @@ export default function TasksPage() {
           <Button onClick={openAdd}>+ Add task</Button>
         </div>
 
-        <div className="space-y-2">
-          {filtered.map((task) => (
-            <TaskRow key={task.id} task={task} onEdit={() => openEdit(task)} onChanged={refresh} />
+        <div className="space-y-6">
+          {groups.map((group) => (
+            <div key={group.key} className="space-y-2">
+              <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">{group.label}</h3>
+              <div className="space-y-2">
+                {group.tasks.map((task) => (
+                  <TaskRow key={task.id} task={task} onEdit={() => openEdit(task)} onChanged={refresh} />
+                ))}
+              </div>
+            </div>
           ))}
-          {filtered.length === 0 && <p className="text-sm text-muted">Nothing here.</p>}
+          {groups.length === 0 && <p className="text-sm text-muted">Nothing here.</p>}
         </div>
       </div>
 
