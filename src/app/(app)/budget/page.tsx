@@ -14,12 +14,17 @@ import { computeExpenseTotals, PAYMENT_STATUS_LABEL } from "@/lib/utils/paymentS
 import { downloadCsv } from "@/lib/utils/csv";
 import { StatCard, Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
+import { Select } from "@/components/ui/Input";
 import { CategorySection } from "@/components/budget/CategorySection";
 import { ExpenseModal } from "@/components/budget/ExpenseModal";
 import { BudgetBreakdownChart } from "@/components/budget/BudgetBreakdownChart";
 import { AddCategoryForm } from "@/components/budget/AddCategoryForm";
+import { ReorderCategoriesModal } from "@/components/budget/ReorderCategoriesModal";
 import { canEdit } from "@/lib/utils/permissions";
 import type { ExpenseWithInstalments } from "@/lib/types/domain";
+
+type CategorySort = "alphabetical" | "custom";
+const CATEGORY_SORT_STORAGE_KEY = "wedding-planner:budget-category-sort";
 
 export default function BudgetPage() {
   const router = useRouter();
@@ -36,6 +41,19 @@ export default function BudgetPage() {
   // reopening it for a different expense (or for "add" after an edit) would
   // keep showing whatever was loaded the first time the modal ever opened.
   const [modalKey, setModalKey] = useState(0);
+  const [reorderOpen, setReorderOpen] = useState(false);
+  // Purely a display preference (not shared data), so it lives in
+  // localStorage rather than the database — remembered per device, same as
+  // any other "how I like to view this" setting.
+  const [categorySort, setCategorySort] = useState<CategorySort>("alphabetical");
+  useEffect(() => {
+    const stored = localStorage.getItem(CATEGORY_SORT_STORAGE_KEY);
+    if (stored === "alphabetical" || stored === "custom") setCategorySort(stored);
+  }, []);
+  function changeCategorySort(next: CategorySort) {
+    setCategorySort(next);
+    localStorage.setItem(CATEGORY_SORT_STORAGE_KEY, next);
+  }
 
   function openEdit(expense: ExpenseWithInstalments) {
     setEditingExpense(expense);
@@ -73,6 +91,10 @@ export default function BudgetPage() {
   const totals = weddingTotals(wedding?.total_budget ?? 0, expenses, vendors);
   const byCategory = categoryTotals(categories, expenses, vendors);
   const expectedCosts = sum(byCategory.map((c) => c.targetBudget));
+  const sortedCategories =
+    categorySort === "alphabetical"
+      ? [...byCategory].sort((a, b) => a.name.localeCompare(b.name))
+      : byCategory; // already in the couple's own arranged order (sort_order)
 
   function refresh() {
     refreshExpenses();
@@ -142,8 +164,31 @@ export default function BudgetPage() {
 
         <BudgetBreakdownChart categories={byCategory} currency={wedding?.currency} />
 
+        <div className="flex flex-wrap items-center justify-between gap-2">
+          <h3 className="font-display text-lg font-semibold">Categories</h3>
+          <div className="flex items-center gap-2">
+            <Select
+              value={categorySort}
+              onChange={(e) => changeCategorySort(e.target.value as CategorySort)}
+              className="w-auto"
+            >
+              <option value="alphabetical">Alphabetical</option>
+              <option value="custom">Arrange yourself</option>
+            </Select>
+            {categorySort === "custom" && (
+              <button
+                type="button"
+                onClick={() => setReorderOpen(true)}
+                className="rounded-full border border-primaryStrong bg-primary/10 px-3 py-1.5 text-xs font-medium text-primaryStrong"
+              >
+                Arrange categories
+              </button>
+            )}
+          </div>
+        </div>
+
         <div className="space-y-8">
-          {byCategory.map((cat) => (
+          {sortedCategories.map((cat) => (
             <CategorySection
               key={cat.categoryId}
               totals={cat}
@@ -173,6 +218,12 @@ export default function BudgetPage() {
         vendors={vendors}
         expense={editingExpense}
         onSaved={refresh}
+      />
+      <ReorderCategoriesModal
+        open={reorderOpen}
+        onClose={() => setReorderOpen(false)}
+        categories={categories}
+        onSaved={refreshCategories}
       />
     </div>
   );
