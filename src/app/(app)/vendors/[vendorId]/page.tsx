@@ -1,7 +1,8 @@
 "use client";
 
 import { useState } from "react";
-import { useParams, useRouter } from "next/navigation";
+import Link from "next/link";
+import { useParams } from "next/navigation";
 import { PageHeader } from "@/components/nav/PageHeader";
 import { useWedding } from "@/lib/wedding/WeddingProvider";
 import { useVendors } from "@/lib/hooks/useVendors";
@@ -23,7 +24,6 @@ import type { ExpenseWithInstalments } from "@/lib/types/domain";
 
 export default function VendorDetailPage() {
   const { vendorId } = useParams<{ vendorId: string }>();
-  const router = useRouter();
   const { wedding, role } = useWedding();
   const { vendors, refresh } = useVendors(wedding?.id);
   const { expenses, refresh: refreshExpenses } = useExpenses(wedding?.id);
@@ -64,9 +64,13 @@ export default function VendorDetailPage() {
     <div>
       <PageHeader title={vendor.name} />
       <div className="space-y-6 p-4 sm:p-6">
-        <button onClick={() => router.back()} className="text-sm font-medium text-primaryStrong">
+        {/* A plain link, not router.back() — this page can be reached from
+            more than just the Vendors list (Contacts' "View vendor", a
+            direct link, …), so browser history isn't reliably "the Vendors
+            tab". */}
+        <Link href="/vendors" className="text-sm font-medium text-primaryStrong">
           ← Back to vendors
-        </button>
+        </Link>
 
         <Card>
           <div className="flex items-start justify-between gap-3">
