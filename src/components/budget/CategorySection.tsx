@@ -36,7 +36,7 @@ export function CategorySection({
           <div>Paid: {formatCurrency(totals.paid, currency)}</div>
           <div>Outstanding: {formatCurrency(totals.outstanding, currency)}</div>
           <div className={totals.remainingAgainstTarget < 0 ? "text-danger" : ""}>
-            Remaining: {formatCurrency(totals.remainingAgainstTarget, currency)}
+            Budget Remaining: {formatCurrency(totals.remainingAgainstTarget, currency)}
           </div>
         </div>
       </div>
