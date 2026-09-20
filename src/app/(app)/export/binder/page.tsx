@@ -183,7 +183,7 @@ export default function ExportBinderPage() {
             ["Ideal Budget", totals.totalBudget],
             ["Committed", totals.committed],
             ["Paid", totals.paid],
-            ["Outstanding", totals.outstanding],
+            ["Outstanding Payments", totals.outstanding],
             ["Ideal Budget Remaining", totals.remaining],
           ].map(([label, value]) => (
             <div key={label as string}>
