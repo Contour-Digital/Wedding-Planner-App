@@ -119,7 +119,7 @@ export default function BudgetPage() {
           <StatCard label="Paid" value={formatCurrency(totals.paid, wedding?.currency)} tone="good" />
           <StatCard label="Outstanding" value={formatCurrency(totals.outstanding, wedding?.currency)} tone="warn" />
           <StatCard
-            label="Budget Remaining"
+            label="Ideal Budget Remaining"
             value={formatCurrency(totals.remaining, wedding?.currency)}
             tone={totals.remaining < 0 ? "danger" : "default"}
           />

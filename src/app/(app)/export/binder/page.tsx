@@ -184,7 +184,7 @@ export default function ExportBinderPage() {
             ["Committed", totals.committed],
             ["Paid", totals.paid],
             ["Outstanding", totals.outstanding],
-            ["Budget Remaining", totals.remaining],
+            ["Ideal Budget Remaining", totals.remaining],
           ].map(([label, value]) => (
             <div key={label as string}>
               <p className="text-xs text-muted">{label}</p>

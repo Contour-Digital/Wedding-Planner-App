@@ -170,6 +170,8 @@ export interface Expense {
   updated_at: string;
 }
 
+export type InstalmentKind = "balance" | "custom";
+
 export interface ExpenseInstalment {
   id: string;
   expense_id: string;
@@ -179,6 +181,7 @@ export interface ExpenseInstalment {
   paid_date: string | null;
   reminder_days: ReminderDays;
   label: string | null;
+  kind: InstalmentKind;
   created_at: string;
 }
 

@@ -86,27 +86,35 @@ export function ExpenseCard({
 
       {expanded && (
         <div className="mt-2 space-y-2 border-t border-line pt-2">
-          {expense.instalments.map((inst) => (
-            <div key={inst.id} className="flex items-center justify-between text-sm">
-              <div>
-                <p>{inst.label || "Instalment"}</p>
-                <p className="text-xs text-muted">Due {formatDate(inst.due_date)}</p>
+          {expense.instalments.map((inst) => {
+            const displayLabel = inst.kind === "balance" ? "Balance" : inst.label || "Instalment";
+            return (
+              <div key={inst.id} className="flex items-center justify-between text-sm">
+                <div>
+                  <p>{displayLabel}</p>
+                  <p className="text-xs text-muted">Due {formatDate(inst.due_date)}</p>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="font-medium">{formatCurrency(inst.amount, currency)}</span>
+                  <label className="flex items-center gap-1 text-xs">
+                    <input
+                      type="checkbox"
+                      checked={inst.paid}
+                      onChange={(e) =>
+                        toggleInstalmentPaid(
+                          inst.id,
+                          e.target.checked,
+                          inst.kind === "balance" ? "Balance" : inst.label ?? "",
+                          inst.amount
+                        )
+                      }
+                    />
+                    Paid
+                  </label>
+                </div>
               </div>
-              <div className="flex items-center gap-2">
-                <span className="font-medium">{formatCurrency(inst.amount, currency)}</span>
-                <label className="flex items-center gap-1 text-xs">
-                  <input
-                    type="checkbox"
-                    checked={inst.paid}
-                    onChange={(e) =>
-                      toggleInstalmentPaid(inst.id, e.target.checked, inst.label ?? "", inst.amount)
-                    }
-                  />
-                  Paid
-                </label>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       )}
 
