@@ -20,6 +20,7 @@ import { ExpenseModal } from "@/components/budget/ExpenseModal";
 import { BudgetBreakdownChart } from "@/components/budget/BudgetBreakdownChart";
 import { AddCategoryForm } from "@/components/budget/AddCategoryForm";
 import { ReorderCategoriesModal } from "@/components/budget/ReorderCategoriesModal";
+import { UpcomingPaymentsModal } from "@/components/budget/UpcomingPaymentsModal";
 import { canEdit } from "@/lib/utils/permissions";
 import type { ExpenseWithInstalments } from "@/lib/types/domain";
 
@@ -42,6 +43,7 @@ export default function BudgetPage() {
   // keep showing whatever was loaded the first time the modal ever opened.
   const [modalKey, setModalKey] = useState(0);
   const [reorderOpen, setReorderOpen] = useState(false);
+  const [upcomingOpen, setUpcomingOpen] = useState(false);
   // Purely a display preference (not shared data), so it lives in
   // localStorage rather than the database — remembered per device, same as
   // any other "how I like to view this" setting.
@@ -61,9 +63,10 @@ export default function BudgetPage() {
     setModalOpen(true);
   }
 
-  // Lets "Upcoming payments" (Dashboard and /budget/upcoming) deep-link
-  // straight into editing a specific expense via /budget?expense=<id>,
-  // instead of landing here and making the couple find it themselves.
+  // Lets the "Upcoming Payments" modal (opened from here or Dashboard)
+  // deep-link straight into editing a specific expense via
+  // /budget?expense=<id>, instead of landing here and making the couple
+  // find it themselves.
   // Read directly off window.location rather than useSearchParams() so
   // this client page doesn't need a Suspense boundary just for this. Above
   // the canEdit early return — hooks must run in the same order every
@@ -151,9 +154,9 @@ export default function BudgetPage() {
           />
         </div>
 
-        <Link href="/budget/upcoming" className="mt-2 block">
-          <Button variant="outline">View upcoming payments</Button>
-        </Link>
+        <Button variant="outline" className="mt-2" onClick={() => setUpcomingOpen(true)}>
+          View upcoming payments
+        </Button>
 
         <div className="flex flex-wrap items-center gap-2">
           <Button onClick={openAdd}>+ Add expense</Button>
@@ -224,6 +227,13 @@ export default function BudgetPage() {
         onClose={() => setReorderOpen(false)}
         categories={categories}
         onSaved={refreshCategories}
+      />
+      <UpcomingPaymentsModal
+        open={upcomingOpen}
+        onClose={() => setUpcomingOpen(false)}
+        expenses={expenses}
+        vendors={vendors}
+        currency={wedding?.currency}
       />
     </div>
   );

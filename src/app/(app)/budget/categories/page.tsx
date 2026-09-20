@@ -8,7 +8,7 @@ import { canEdit } from "@/lib/utils/permissions";
 
 // Not in the main nav or hamburger menu — reached via the "Manage
 // categories" link at the bottom of Budget, or from Settings (same pattern
-// as /budget/upcoming, /wedding-day/print, /export/binder).
+// as /wedding-day/print, /export/binder).
 export default function ExpenseCategoriesPage() {
   const { role } = useWedding();
 
