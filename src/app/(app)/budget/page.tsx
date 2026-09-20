@@ -1,6 +1,7 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { PageHeader } from "@/components/nav/PageHeader";
 import { useWedding } from "@/lib/wedding/WeddingProvider";
@@ -20,6 +21,7 @@ import { canEdit } from "@/lib/utils/permissions";
 import type { ExpenseWithInstalments } from "@/lib/types/domain";
 
 export default function BudgetPage() {
+  const router = useRouter();
   const { wedding, role } = useWedding();
   const weddingId = wedding?.id;
   const { expenses, refresh: refreshExpenses } = useExpenses(weddingId);
@@ -33,6 +35,30 @@ export default function BudgetPage() {
   // reopening it for a different expense (or for "add" after an edit) would
   // keep showing whatever was loaded the first time the modal ever opened.
   const [modalKey, setModalKey] = useState(0);
+
+  function openEdit(expense: ExpenseWithInstalments) {
+    setEditingExpense(expense);
+    setModalKey((k) => k + 1);
+    setModalOpen(true);
+  }
+
+  // Lets "Upcoming payments" (Dashboard and /budget/upcoming) deep-link
+  // straight into editing a specific expense via /budget?expense=<id>,
+  // instead of landing here and making the couple find it themselves.
+  // Read directly off window.location rather than useSearchParams() so
+  // this client page doesn't need a Suspense boundary just for this. Above
+  // the canEdit early return — hooks must run in the same order every
+  // render regardless of role.
+  const autoOpenedExpenseId = useRef<string | null>(null);
+  useEffect(() => {
+    const expenseId = new URLSearchParams(window.location.search).get("expense");
+    if (!expenseId || autoOpenedExpenseId.current === expenseId) return;
+    const match = expenses.find((e) => e.id === expenseId);
+    if (!match) return;
+    autoOpenedExpenseId.current = expenseId;
+    openEdit(match);
+    router.replace("/budget");
+  }, [expenses, router]);
 
   if (!canEdit(role)) {
     return (
@@ -54,12 +80,6 @@ export default function BudgetPage() {
 
   function openAdd() {
     setEditingExpense(null);
-    setModalKey((k) => k + 1);
-    setModalOpen(true);
-  }
-
-  function openEdit(expense: ExpenseWithInstalments) {
-    setEditingExpense(expense);
     setModalKey((k) => k + 1);
     setModalOpen(true);
   }

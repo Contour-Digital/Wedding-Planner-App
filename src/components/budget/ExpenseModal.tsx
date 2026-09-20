@@ -96,7 +96,9 @@ export function ExpenseModal({
     if (vendorMode === "new" && newVendorName.trim()) {
       const { data: vendorRow } = await supabase
         .from("vendors")
-        .insert({ wedding_id: wedding.id, name: newVendorName.trim() })
+        // Being added specifically to cover a new expense implies the
+        // vendor is already locked in, not still being considered.
+        .insert({ wedding_id: wedding.id, name: newVendorName.trim(), status: "booked" })
         .select()
         .single();
       resolvedVendorId = vendorRow?.id ?? null;

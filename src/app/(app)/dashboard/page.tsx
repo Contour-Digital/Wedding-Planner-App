@@ -30,14 +30,15 @@ export default function DashboardPage() {
   const tasksDueThisMonth = openTasks.filter((t) => isDueThisMonth(t.due_date));
   const overdueTasks = openTasks.filter((t) => isOverdue(t.due_date, t.completed));
 
-  const allInstalments = expenses.flatMap((e) =>
-    e.instalments.map((i) => ({ ...i, expenseName: e.name }))
-  );
+  const allInstalments = expenses.flatMap((e) => {
+    const vendorName = vendors.find((v) => v.id === e.vendor_id)?.name;
+    return e.instalments.map((i) => ({ ...i, expenseId: e.id, expenseName: e.name, vendorName }));
+  });
   const upcomingInstalments = allInstalments
     .filter((i) => !i.paid)
     .sort((a, b) => (a.due_date ?? "9999-99-99").localeCompare(b.due_date ?? "9999-99-99"));
 
-  const bookedVendors = vendors.filter((v) => v.status === "booked" || v.status === "completed");
+  const bookedVendors = vendors.filter((v) => v.status === "booked");
   const countdown = weddingCountdown(wedding?.wedding_date);
 
   return (
@@ -69,15 +70,17 @@ export default function DashboardPage() {
               <h3 className="mb-3 text-xs font-semibold uppercase tracking-wide text-muted">Upcoming payments</h3>
               <div className="space-y-2">
                 {upcomingInstalments.slice(0, 2).map((p) => (
-                  <Card key={p.id} className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium">{p.expenseName}</p>
-                      <p className="text-xs text-muted">
-                        {isOverdue(p.due_date, p.paid) ? "Was due" : "Due"} {formatDate(p.due_date)}
-                      </p>
-                    </div>
-                    <p className="font-semibold">{formatCurrency(p.amount, wedding?.currency)}</p>
-                  </Card>
+                  <Link key={p.id} href={`/budget?expense=${p.expenseId}`} className="block">
+                    <Card className="flex items-center justify-between">
+                      <div>
+                        <p className="text-sm font-medium">{p.vendorName ?? p.expenseName}</p>
+                        <p className="text-xs text-muted">
+                          {isOverdue(p.due_date, p.paid) ? "Was due" : "Due"} {formatDate(p.due_date)}
+                        </p>
+                      </div>
+                      <p className="font-semibold">{formatCurrency(p.amount, wedding?.currency)}</p>
+                    </Card>
+                  </Link>
                 ))}
                 {upcomingInstalments.length === 0 && (
                   <p className="text-sm text-muted">No upcoming payments.</p>

@@ -5,7 +5,7 @@
 
 export type WeddingRole = "owner" | "editor" | "timeline_viewer" | "viewer";
 
-export type VendorStatus = "considering" | "contacted" | "quote_received" | "booked" | "completed";
+export type VendorStatus = "considering" | "contacted" | "quote_received" | "booked";
 
 export type VendorDocumentType =
   | "contract"
