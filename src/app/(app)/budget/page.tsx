@@ -117,7 +117,11 @@ export default function BudgetPage() {
           <StatCard label="Ideal Budget" value={formatCurrency(totals.totalBudget, wedding?.currency)} />
           <StatCard label="Committed" value={formatCurrency(totals.committed, wedding?.currency)} />
           <StatCard label="Paid" value={formatCurrency(totals.paid, wedding?.currency)} tone="good" />
-          <StatCard label="Outstanding" value={formatCurrency(totals.outstanding, wedding?.currency)} tone="warn" />
+          <StatCard
+            label="Outstanding Payments"
+            value={formatCurrency(totals.outstanding, wedding?.currency)}
+            tone="warn"
+          />
           <StatCard
             label="Ideal Budget Remaining"
             value={formatCurrency(totals.remaining, wedding?.currency)}
@@ -125,14 +129,15 @@ export default function BudgetPage() {
           />
         </div>
 
+        <Link href="/budget/upcoming">
+          <Button variant="outline">View upcoming payments</Button>
+        </Link>
+
         <div className="flex flex-wrap items-center gap-2">
           <Button onClick={openAdd}>+ Add expense</Button>
           <Button variant="secondary" onClick={exportCsv} disabled={expenses.length === 0}>
             Export CSV
           </Button>
-          <Link href="/budget/upcoming">
-            <Button variant="outline">Upcoming payments</Button>
-          </Link>
         </div>
 
         <BudgetBreakdownChart categories={byCategory} currency={wedding?.currency} />
