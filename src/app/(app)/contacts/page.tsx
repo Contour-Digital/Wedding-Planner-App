@@ -168,8 +168,11 @@ export default function ContactsPage() {
               <div key={c.id} className="flex items-start justify-between rounded-xl border border-line p-3">
                 <div>
                   <div className="flex flex-wrap items-center gap-1.5">
-                    {c.role && <p className="text-xs font-medium uppercase tracking-wide text-muted">{c.role}</p>}
-                    <Badge className="bg-line text-muted">{c.vendor_name}</Badge>
+                    {/* Their role (e.g. "Caterer"), not the vendor's business
+                        name — this tab is about who to call, and the role
+                        says why, same as a key contact's role does. Falls
+                        back to the business name only if no role was set. */}
+                    <Badge className="bg-line text-muted">{c.role || c.vendor_name}</Badge>
                   </div>
                   <p className="text-sm font-medium">{c.name}</p>
                   <PhoneLink phone={c.phone} />
