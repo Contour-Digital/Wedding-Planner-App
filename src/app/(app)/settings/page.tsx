@@ -3,7 +3,7 @@
 import { PageHeader } from "@/components/nav/PageHeader";
 import { PersonalProfileForm } from "@/components/settings/PersonalProfileForm";
 import { WeddingSettingsForm } from "@/components/settings/WeddingSettingsForm";
-import { CategoryManager } from "@/components/settings/CategoryManager";
+import { CategoriesLinkCard } from "@/components/settings/CategoriesLinkCard";
 import { ExportBinderCard } from "@/components/settings/ExportBinderCard";
 import { DeleteAccountCard } from "@/components/settings/DeleteAccountCard";
 import { useWedding } from "@/lib/wedding/WeddingProvider";
@@ -20,7 +20,7 @@ export default function SettingsPage() {
         {canEdit(role) && (
           <>
             <WeddingSettingsForm />
-            <CategoryManager />
+            <CategoriesLinkCard />
             <ExportBinderCard />
           </>
         )}

@@ -89,16 +89,14 @@ export function VendorModal({
   return (
     <Modal open={open} onClose={onClose} title={vendor ? "Edit vendor" : "Add vendor"}>
       <div className="space-y-4">
-        <Field label="Vendor / business name">
+        <Field label="Vendor / business name" error={nameError}>
           <Input
             value={name}
             onChange={(e) => {
               setName(e.target.value);
               if (nameError) setNameError(false);
             }}
-            className={nameError ? "border-danger focus:border-danger focus:ring-danger/20" : undefined}
           />
-          {nameError && <p className="mt-1 text-xs text-danger">Required</p>}
         </Field>
         <Field label="Type">
           <Input value={type} onChange={(e) => setType(e.target.value)} placeholder="Photographer" />

@@ -27,6 +27,7 @@ export default function SharingPage() {
   const [email, setEmail] = useState("");
   const [inviteRole, setInviteRole] = useState<WeddingRole>("timeline_viewer");
   const [error, setError] = useState<string | null>(null);
+  const [emailError, setEmailError] = useState(false);
   const [notice, setNotice] = useState<string | null>(null);
   const [generatedMessage, setGeneratedMessage] = useState<string | null>(null);
   const [creating, setCreating] = useState(false);
@@ -53,10 +54,12 @@ export default function SharingPage() {
     }
     if (!email.trim()) {
       setError("Enter an email address.");
+      setEmailError(true);
       return;
     }
     setCreating(true);
     setError(null);
+    setEmailError(false);
     setNotice(null);
     setGeneratedMessage(null);
 
@@ -181,8 +184,16 @@ export default function SharingPage() {
             <Field label="Name" hint="Optional — shown here before they accept">
               <Input value={name} onChange={(e) => setName(e.target.value)} placeholder="Chloe" />
             </Field>
-            <Field label="Email">
-              <Input type="email" value={email} onChange={(e) => setEmail(e.target.value)} placeholder="mc@example.com" />
+            <Field label="Email" error={emailError && "Enter an email address"}>
+              <Input
+                type="email"
+                value={email}
+                onChange={(e) => {
+                  setEmail(e.target.value);
+                  if (emailError) setEmailError(false);
+                }}
+                placeholder="mc@example.com"
+              />
             </Field>
             <Field label="Role">
               <Select value={inviteRole} onChange={(e) => setInviteRole(e.target.value as WeddingRole)}>

@@ -21,9 +21,13 @@ export function ContactManager({
   const supabase = createClient();
   const [adding, setAdding] = useState(false);
   const [draft, setDraft] = useState({ role: "", name: "", phone: "", email: "" });
+  const [nameError, setNameError] = useState(false);
 
   async function addContact() {
-    if (!draft.name.trim()) return;
+    if (!draft.name.trim()) {
+      setNameError(true);
+      return;
+    }
     await supabase.from("vendor_contacts").insert({
       vendor_id: vendorId,
       role: draft.role.trim() || null,
@@ -33,6 +37,7 @@ export function ContactManager({
     });
     setDraft({ role: "", name: "", phone: "", email: "" });
     setAdding(false);
+    setNameError(false);
     onChanged();
   }
 
@@ -51,7 +56,13 @@ export function ContactManager({
       <div className="flex items-center justify-between">
         <h3 className="font-display text-lg font-semibold">Contacts</h3>
         {editable && (
-          <Button variant="secondary" onClick={() => setAdding((v) => !v)}>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setAdding((v) => !v);
+              setNameError(false);
+            }}
+          >
             {adding ? "Cancel" : "+ Add contact"}
           </Button>
         )}
@@ -60,7 +71,18 @@ export function ContactManager({
       {adding && editable && (
         <div className="space-y-2 rounded-xl border border-line p-3">
           <Input placeholder="Role (e.g. Coordinator)" value={draft.role} onChange={(e) => setDraft({ ...draft, role: e.target.value })} />
-          <Input placeholder="Name" value={draft.name} onChange={(e) => setDraft({ ...draft, name: e.target.value })} />
+          <div>
+            <Input
+              placeholder="Name"
+              value={draft.name}
+              onChange={(e) => {
+                setDraft({ ...draft, name: e.target.value });
+                if (nameError) setNameError(false);
+              }}
+              className={nameError ? "border-danger focus:border-danger focus:ring-danger/20" : undefined}
+            />
+            {nameError && <p className="mt-1 text-xs text-danger">Required</p>}
+          </div>
           <Input placeholder="Phone" value={draft.phone} onChange={(e) => setDraft({ ...draft, phone: e.target.value })} />
           <Input placeholder="Email" value={draft.email} onChange={(e) => setDraft({ ...draft, email: e.target.value })} />
           <Button fullWidth onClick={addContact}>

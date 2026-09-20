@@ -34,6 +34,7 @@ export function TaskModal({
   const [dueDate, setDueDate] = useState(task?.due_date ?? "");
   const [notes, setNotes] = useState(task?.notes ?? "");
   const [saving, setSaving] = useState(false);
+  const [titleError, setTitleError] = useState(false);
 
   const people = members.filter((m) => m.user_id);
   // Captured once (this modal remounts via a fresh key on every open — see
@@ -43,7 +44,11 @@ export function TaskModal({
   const initialAssignedTo = task?.assigned_to_both ? "both" : task?.assigned_user_id ?? "unassigned";
 
   async function handleSave() {
-    if (!wedding || !user || !title.trim()) return;
+    if (!wedding || !user) return;
+    if (!title.trim()) {
+      setTitleError(true);
+      return;
+    }
     setSaving(true);
 
     const payload = {
@@ -91,8 +96,14 @@ export function TaskModal({
   return (
     <Modal open={open} onClose={onClose} title={task ? "Edit task" : "Add task"}>
       <div className="space-y-4">
-        <Field label="Title">
-          <Input value={title} onChange={(e) => setTitle(e.target.value)} />
+        <Field label="Title" error={titleError}>
+          <Input
+            value={title}
+            onChange={(e) => {
+              setTitle(e.target.value);
+              if (titleError) setTitleError(false);
+            }}
+          />
         </Field>
         <Field label="Assigned to">
           <Select value={assignedTo} onChange={(e) => setAssignedTo(e.target.value)}>

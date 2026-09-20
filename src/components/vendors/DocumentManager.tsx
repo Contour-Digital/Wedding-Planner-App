@@ -47,32 +47,38 @@ export function DocumentManager({
   const [adding, setAdding] = useState(false);
   const [mode, setMode] = useState<"file" | "url">("file");
   const [type, setType] = useState<VendorDocumentType>("contract");
-  const [title, setTitle] = useState("");
   const [url, setUrl] = useState("");
   const [file, setFile] = useState<File | null>(null);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [openingId, setOpeningId] = useState<string | null>(null);
+  const [sourceError, setSourceError] = useState(false);
 
   function resetDraft() {
     setType("contract");
-    setTitle("");
     setUrl("");
     setFile(null);
     setError(null);
+    setSourceError(false);
   }
 
+  // No Title field — the file's own name, or the URL itself, is the title,
+  // since vendor_documents.title is NOT NULL and there's nothing else to
+  // derive it from.
   async function addDocument() {
-    if (!title.trim()) return;
+    const missingSource = mode === "url" ? !url.trim() : !file;
+    if (missingSource) {
+      setSourceError(true);
+      return;
+    }
     setError(null);
 
     if (mode === "url") {
-      if (!url.trim()) return;
       setSaving(true);
       const { error: insertError } = await supabase.from("vendor_documents").insert({
         vendor_id: vendorId,
         type,
-        title: title.trim(),
+        title: url.trim(),
         external_url: url.trim(),
       });
       setSaving(false);
@@ -93,7 +99,7 @@ export function DocumentManager({
       const { error: insertError } = await supabase.from("vendor_documents").insert({
         vendor_id: vendorId,
         type,
-        title: title.trim(),
+        title: file.name,
         storage_path: path,
       });
       setSaving(false);
@@ -158,7 +164,10 @@ export function DocumentManager({
               <button
                 key={m}
                 type="button"
-                onClick={() => setMode(m)}
+                onClick={() => {
+                  setMode(m);
+                  setSourceError(false);
+                }}
                 className={`rounded-full border px-3 py-1.5 text-xs font-medium ${
                   mode === m ? "border-primaryStrong bg-primary/10 text-primaryStrong" : "border-line text-muted"
                 }`}
@@ -174,18 +183,32 @@ export function DocumentManager({
               </option>
             ))}
           </Select>
-          <Input placeholder="Title" value={title} onChange={(e) => setTitle(e.target.value)} />
-          {mode === "file" ? (
-            <Input type="file" onChange={(e) => setFile(e.target.files?.[0] ?? null)} />
-          ) : (
-            <Input placeholder="Link (URL)" value={url} onChange={(e) => setUrl(e.target.value)} />
-          )}
+          <div>
+            {mode === "file" ? (
+              <Input
+                type="file"
+                onChange={(e) => {
+                  setFile(e.target.files?.[0] ?? null);
+                  if (sourceError) setSourceError(false);
+                }}
+              />
+            ) : (
+              <Input
+                placeholder="Link (URL)"
+                value={url}
+                onChange={(e) => {
+                  setUrl(e.target.value);
+                  if (sourceError) setSourceError(false);
+                }}
+                className={sourceError ? "border-danger focus:border-danger focus:ring-danger/20" : undefined}
+              />
+            )}
+            {sourceError && (
+              <p className="mt-1 text-xs text-danger">{mode === "file" ? "Choose a file" : "Required"}</p>
+            )}
+          </div>
           {error && <p className="text-xs text-danger">{error}</p>}
-          <Button
-            fullWidth
-            onClick={addDocument}
-            disabled={saving || !title.trim() || (mode === "file" ? !file : !url.trim())}
-          >
+          <Button fullWidth onClick={addDocument} disabled={saving}>
             {saving ? "Saving…" : "Save document"}
           </Button>
         </div>

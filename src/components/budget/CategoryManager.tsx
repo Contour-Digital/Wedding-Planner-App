@@ -4,61 +4,43 @@ import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useWedding } from "@/lib/wedding/WeddingProvider";
 import { useCategories } from "@/lib/hooks/useCategories";
-import { logActivity } from "@/lib/activity/logActivity";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { formatCurrency } from "@/lib/utils/currency";
+import { AddCategoryForm } from "./AddCategoryForm";
 
 // Rename-in-place: renaming a category is just an UPDATE, so every expense
 // keeps its category_id and "moves with" the rename automatically — no
 // migration needed. Deleting reassigns affected expenses to Uncategorised
 // rather than losing them.
 export function CategoryManager() {
-  const { wedding, user } = useWedding();
+  const { wedding } = useWedding();
   const { categories, refresh } = useCategories(wedding?.id);
   const supabase = createClient();
-  const [newName, setNewName] = useState("");
-  const [newTarget, setNewTarget] = useState("");
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editName, setEditName] = useState("");
   const [editTarget, setEditTarget] = useState("");
   const [removingId, setRemovingId] = useState<string | null>(null);
+  const [editNameError, setEditNameError] = useState(false);
 
   if (!wedding) return null;
 
   const removingCategory = categories.find((c) => c.id === removingId) ?? null;
 
-  async function addCategory() {
-    if (!newName.trim()) return;
-    await supabase.from("expense_categories").insert({
-      wedding_id: wedding!.id,
-      name: newName.trim(),
-      target_budget: Number(newTarget) || 0,
-      sort_order: categories.length,
-    });
-    if (user) {
-      await logActivity(supabase, {
-        weddingId: wedding!.id,
-        userId: user.id,
-        actionType: "category.created",
-        description: `Added expense category "${newName.trim()}".`,
-        entityType: "expense_category",
-      });
-    }
-    setNewName("");
-    setNewTarget("");
-    refresh();
-  }
-
   function startEdit(id: string, name: string, target: number) {
     setEditingId(id);
     setEditName(name);
     setEditTarget(String(target));
+    setEditNameError(false);
   }
 
   async function saveEdit(id: string) {
+    if (!editName.trim()) {
+      setEditNameError(true);
+      return;
+    }
     await supabase
       .from("expense_categories")
       .update({ name: editName.trim(), target_budget: Number(editTarget) || 0 })
@@ -97,7 +79,17 @@ export function CategoryManager() {
           <div key={c.id} className="flex items-center gap-2 rounded-xl border border-line p-2.5">
             {editingId === c.id ? (
               <>
-                <Input value={editName} onChange={(e) => setEditName(e.target.value)} className="flex-1" />
+                <div className="flex-1">
+                  <Input
+                    value={editName}
+                    onChange={(e) => {
+                      setEditName(e.target.value);
+                      if (editNameError) setEditNameError(false);
+                    }}
+                    className={editNameError ? "border-danger focus:border-danger focus:ring-danger/20" : undefined}
+                  />
+                  {editNameError && <p className="mt-1 text-xs text-danger">Required</p>}
+                </div>
                 <Input
                   type="number"
                   value={editTarget}
@@ -137,16 +129,8 @@ export function CategoryManager() {
         ))}
       </div>
 
-      <div className="flex items-end gap-2 border-t border-line pt-4">
-        <div className="flex-1">
-          <label className="mb-1 block text-xs font-medium text-muted">New category</label>
-          <Input value={newName} onChange={(e) => setNewName(e.target.value)} placeholder="e.g. Hair & Makeup" />
-        </div>
-        <div className="w-28">
-          <label className="mb-1 block text-xs font-medium text-muted">Target</label>
-          <Input type="number" value={newTarget} onChange={(e) => setNewTarget(e.target.value)} />
-        </div>
-        <Button onClick={addCategory}>Add</Button>
+      <div className="border-t border-line pt-4">
+        <AddCategoryForm categories={categories} onAdded={refresh} />
       </div>
 
       <ConfirmDialog
