@@ -12,6 +12,7 @@ import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { AddNoteCategoryForm } from "@/components/notes/AddNoteCategoryForm";
 import { NoteModal } from "@/components/notes/NoteModal";
 import { formatDate } from "@/lib/utils/date";
+import { linkifyText } from "@/lib/utils/linkify";
 import { canEdit } from "@/lib/utils/permissions";
 import type { Note, NoteCategory } from "@/lib/types/database";
 
@@ -108,7 +109,7 @@ export default function NotesPage() {
                       <p className="text-sm font-medium">{note.title || "Untitled"}</p>
                       <span className="shrink-0 text-xs text-muted">{formatDate(note.updated_at)}</span>
                     </div>
-                    <p className="whitespace-pre-wrap text-sm text-ink">{note.content}</p>
+                    <p className="whitespace-pre-wrap text-sm text-ink">{linkifyText(note.content)}</p>
                   </Card>
                 ))}
                 {group.notes.length === 0 && <p className="text-xs text-muted">No notes in this category yet.</p>}
