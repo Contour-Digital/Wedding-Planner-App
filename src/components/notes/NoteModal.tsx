@@ -18,6 +18,7 @@ export function NoteModal({
   defaultCategoryId,
   editable,
   onSaved,
+  onCategoryAdded,
 }: {
   open: boolean;
   onClose: () => void;
@@ -26,12 +27,17 @@ export function NoteModal({
   defaultCategoryId?: string | null;
   editable: boolean;
   onSaved: () => void;
+  // Called (in addition to onSaved) whenever saving created a new
+  // category, so the page's category list — and its tabs — pick it up too.
+  onCategoryAdded?: () => void;
 }) {
   const { wedding, user } = useWedding();
   const supabase = createClient();
 
   const [title, setTitle] = useState(note?.title ?? "");
+  const [categoryMode, setCategoryMode] = useState<"existing" | "new">("existing");
   const [categoryId, setCategoryId] = useState(note?.category_id ?? defaultCategoryId ?? "");
+  const [newCategoryName, setNewCategoryName] = useState("");
   const [content, setContent] = useState(note?.content ?? "");
   const [saving, setSaving] = useState(false);
   const [contentError, setContentError] = useState(false);
@@ -39,7 +45,9 @@ export function NoteModal({
 
   function reset() {
     setTitle(note?.title ?? "");
+    setCategoryMode("existing");
     setCategoryId(note?.category_id ?? defaultCategoryId ?? "");
+    setNewCategoryName("");
     setContent(note?.content ?? "");
     setContentError(false);
   }
@@ -52,9 +60,34 @@ export function NoteModal({
     }
     setSaving(true);
 
+    let resolvedCategoryId = categoryId || null;
+    if (categoryMode === "new" && newCategoryName.trim()) {
+      const name = newCategoryName.trim();
+      const { data: categoryRow, error: categoryError } = await supabase
+        .from("note_categories")
+        .insert({ wedding_id: wedding.id, name, sort_order: categories.length })
+        .select()
+        .single();
+      if (categoryRow) {
+        resolvedCategoryId = categoryRow.id;
+      } else if (categoryError) {
+        // unique(wedding_id, name) — someone already added this exact name
+        // (maybe in another tab) since this modal's categories were
+        // loaded. Reuse that category instead of failing the whole save.
+        const { data: existing } = await supabase
+          .from("note_categories")
+          .select("id")
+          .eq("wedding_id", wedding.id)
+          .eq("name", name)
+          .maybeSingle();
+        resolvedCategoryId = existing?.id ?? null;
+      }
+      onCategoryAdded?.();
+    }
+
     const payload = {
       wedding_id: wedding.id,
-      category_id: categoryId || null,
+      category_id: resolvedCategoryId,
       title: title.trim() || null,
       content: content.trim(),
     };
@@ -115,16 +148,43 @@ export function NoteModal({
           <Input value={title} onChange={(e) => setTitle(e.target.value)} placeholder="Florals idea" disabled={!editable} />
         </Field>
 
-        <Field label="Category">
-          <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} disabled={!editable}>
-            <option value="">Uncategorized</option>
-            {categories.map((c) => (
-              <option key={c.id} value={c.id}>
-                {c.name}
-              </option>
-            ))}
-          </Select>
-        </Field>
+        <div>
+          <span className="mb-1.5 block text-sm font-medium">Category</span>
+          {editable && (
+            <div className="mb-2 flex gap-2">
+              {(["existing", "new"] as const).map((mode) => (
+                <button
+                  key={mode}
+                  type="button"
+                  onClick={() => setCategoryMode(mode)}
+                  className={`rounded-full border px-3 py-1.5 text-xs font-medium ${
+                    categoryMode === mode
+                      ? "border-primaryStrong bg-primary/10 text-primaryStrong"
+                      : "border-line text-muted"
+                  }`}
+                >
+                  {mode === "existing" ? "Choose existing" : "New category"}
+                </button>
+              ))}
+            </div>
+          )}
+          {categoryMode === "existing" || !editable ? (
+            <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)} disabled={!editable}>
+              <option value="">Uncategorized</option>
+              {categories.map((c) => (
+                <option key={c.id} value={c.id}>
+                  {c.name}
+                </option>
+              ))}
+            </Select>
+          ) : (
+            <Input
+              value={newCategoryName}
+              onChange={(e) => setNewCategoryName(e.target.value)}
+              placeholder="e.g. Decor"
+            />
+          )}
+        </div>
 
         <Field label="Note" error={contentError}>
           <Textarea
