@@ -101,6 +101,7 @@ export default function NotesPage() {
         defaultCategoryId={defaultCategoryId}
         editable={editable}
         onSaved={refreshNotes}
+        onCategoryAdded={refreshCategories}
       />
     </div>
   );
