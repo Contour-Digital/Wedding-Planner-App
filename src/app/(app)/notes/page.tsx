@@ -5,11 +5,10 @@ import { PageHeader } from "@/components/nav/PageHeader";
 import { useWedding } from "@/lib/wedding/WeddingProvider";
 import { useNoteCategories } from "@/lib/hooks/useNoteCategories";
 import { useNotes } from "@/lib/hooks/useNotes";
-import { createClient } from "@/lib/supabase/client";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
-import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { AddNoteCategoryForm } from "@/components/notes/AddNoteCategoryForm";
+import { EditNoteCategoryModal } from "@/components/notes/EditNoteCategoryModal";
 import { NoteModal } from "@/components/notes/NoteModal";
 import { NoteViewModal } from "@/components/notes/NoteViewModal";
 import { formatDate } from "@/lib/utils/date";
@@ -21,18 +20,16 @@ export default function NotesPage() {
   const weddingId = wedding?.id;
   const { categories, refresh: refreshCategories } = useNoteCategories(weddingId);
   const { notes, refresh: refreshNotes } = useNotes(weddingId);
-  const supabase = createClient();
   const editable = canEdit(role);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
   const [viewingNote, setViewingNote] = useState<Note | null>(null);
-  const [addCategoryId, setAddCategoryId] = useState<string | null>(null);
   // Bumped on every open so NoteModal (whose fields only seed from `note`
   // on mount) remounts fresh instead of showing whichever note's data
   // happened to be loaded first.
   const [modalKey, setModalKey] = useState(0);
-  const [removingCategory, setRemovingCategory] = useState<NoteCategory | null>(null);
+  const [editingCategory, setEditingCategory] = useState<NoteCategory | null>(null);
 
   // Grouped by category instead of shown as a label on every note — real
   // categories always get a section (even an empty one, so it stays
@@ -54,9 +51,8 @@ export default function NotesPage() {
     },
   ].filter((group) => group.category !== null || group.notes.length > 0);
 
-  function openAdd(categoryId: string | null) {
+  function openAdd() {
     setEditingNote(null);
-    setAddCategoryId(categoryId);
     setModalKey((k) => k + 1);
     setModalOpen(true);
   }
@@ -68,12 +64,6 @@ export default function NotesPage() {
     setModalOpen(true);
   }
 
-  async function removeCategory(category: NoteCategory) {
-    setRemovingCategory(null);
-    await supabase.from("note_categories").delete().eq("id", category.id);
-    refreshCategories();
-  }
-
   return (
     <div>
       <PageHeader title="Notes" />
@@ -82,7 +72,7 @@ export default function NotesPage() {
           <p className="text-sm text-muted">
             {notes.length} note{notes.length === 1 ? "" : "s"}
           </p>
-          {editable && <Button onClick={() => openAdd(null)}>+ Add note</Button>}
+          {editable && <Button onClick={openAdd}>+ Add note</Button>}
         </div>
 
         <div className="space-y-6">
@@ -91,17 +81,12 @@ export default function NotesPage() {
               <div className="flex items-center justify-between gap-2">
                 <h3 className="text-sm font-semibold uppercase tracking-wide text-muted">{group.label}</h3>
                 {editable && group.category && (
-                  <div className="flex shrink-0 items-center gap-3">
-                    <button
-                      onClick={() => openAdd(group.category!.id)}
-                      className="text-xs font-medium text-primaryStrong"
-                    >
-                      + Add note
-                    </button>
-                    <button onClick={() => setRemovingCategory(group.category)} className="text-xs text-danger">
-                      Remove category
-                    </button>
-                  </div>
+                  <button
+                    onClick={() => setEditingCategory(group.category)}
+                    className="shrink-0 text-xs font-medium text-primaryStrong"
+                  >
+                    Edit
+                  </button>
                 )}
               </div>
               <div className="space-y-2">
@@ -136,7 +121,6 @@ export default function NotesPage() {
         onClose={() => setModalOpen(false)}
         categories={categories}
         note={editingNote}
-        defaultCategoryId={addCategoryId}
         editable={editable}
         onSaved={refreshNotes}
         onCategoryAdded={refreshCategories}
@@ -150,16 +134,10 @@ export default function NotesPage() {
         onEdit={() => viewingNote && openEdit(viewingNote)}
       />
 
-      <ConfirmDialog
-        open={removingCategory !== null}
-        title="Remove category"
-        message={
-          removingCategory
-            ? `Remove "${removingCategory.name}"? Its notes move to Uncategorized — nothing is deleted.`
-            : ""
-        }
-        onConfirm={() => removingCategory && removeCategory(removingCategory)}
-        onCancel={() => setRemovingCategory(null)}
+      <EditNoteCategoryModal
+        category={editingCategory}
+        onClose={() => setEditingCategory(null)}
+        onChanged={refreshCategories}
       />
     </div>
   );
