@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useWedding } from "@/lib/wedding/WeddingProvider";
+import { useInspirationCategories } from "@/lib/hooks/useInspirationCategories";
 import { logActivity } from "@/lib/activity/logActivity";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
@@ -34,6 +35,7 @@ export function NoteModal({
 }) {
   const { wedding, user } = useWedding();
   const supabase = createClient();
+  const { categories: inspirationCategories } = useInspirationCategories(wedding?.id);
 
   const [title, setTitle] = useState(note?.title ?? "");
   const [categoryMode, setCategoryMode] = useState<"existing" | "new">("existing");
@@ -47,6 +49,7 @@ export function NoteModal({
   );
   const [removingPhoto, setRemovingPhoto] = useState(false);
   const [addToInspiration, setAddToInspiration] = useState(false);
+  const [inspirationCategoryId, setInspirationCategoryId] = useState("");
   const [saving, setSaving] = useState(false);
   const [contentError, setContentError] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -62,6 +65,7 @@ export function NoteModal({
     setPhotoPreviewUrl(note?.photo_path ? inspirationPhotoUrl(note.photo_path) : null);
     setRemovingPhoto(false);
     setAddToInspiration(false);
+    setInspirationCategoryId("");
     setContentError(false);
   }
 
@@ -159,10 +163,11 @@ export function NoteModal({
       if (!copyError) {
         await supabase.from("inspiration_photos").insert({
           wedding_id: wedding.id,
-          category_id: null,
+          category_id: inspirationCategoryId || null,
           storage_path: inspirationPath,
           caption: title.trim() || null,
           uploaded_by: user.id,
+          source_note_id: noteId,
         });
       }
     }
@@ -284,14 +289,26 @@ export function NoteModal({
             </div>
           )}
           {editable && (photoFile || (photoPath && !removingPhoto)) && (
-            <label className="mt-2 flex items-center gap-1.5 text-sm">
-              <input
-                type="checkbox"
-                checked={addToInspiration}
-                onChange={(e) => setAddToInspiration(e.target.checked)}
-              />
-              Also add this photo to the Inspiration board
-            </label>
+            <div className="mt-2 space-y-2">
+              <label className="flex items-center gap-1.5 text-sm">
+                <input
+                  type="checkbox"
+                  checked={addToInspiration}
+                  onChange={(e) => setAddToInspiration(e.target.checked)}
+                />
+                Also add this photo to the Inspiration board
+              </label>
+              {addToInspiration && (
+                <Select value={inspirationCategoryId} onChange={(e) => setInspirationCategoryId(e.target.value)}>
+                  <option value="">Uncategorized</option>
+                  {inspirationCategories.map((c) => (
+                    <option key={c.id} value={c.id}>
+                      {c.name}
+                    </option>
+                  ))}
+                </Select>
+              )}
+            </div>
           )}
         </div>
 

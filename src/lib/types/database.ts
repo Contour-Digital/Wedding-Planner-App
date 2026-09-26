@@ -236,6 +236,10 @@ export interface InspirationPhoto {
   storage_path: string;
   caption: string | null;
   uploaded_by: string | null;
+  // Set only when this photo was copied over from a note via "Also add
+  // this photo to the Inspiration board" (see NoteModal) — null for every
+  // photo added the normal way.
+  source_note_id: string | null;
   created_at: string;
 }
 
