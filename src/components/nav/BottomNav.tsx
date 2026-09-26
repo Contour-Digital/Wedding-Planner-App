@@ -3,24 +3,21 @@
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { clsx } from "clsx";
-import { ALL_NAV_ITEMS, PRIMARY_NAV_KEYS } from "./NavItems";
+import { ALL_NAV_ITEMS, primaryNavKeysFor } from "./NavItems";
 import { useWedding } from "@/lib/wedding/WeddingProvider";
 import { visibleNavSections } from "@/lib/utils/permissions";
 
 // Mobile-first bottom tab bar. Always the same 5 primary sections for
-// everyone else — Vendors, Sharing, Activity and Settings live in the
-// hamburger menu (MobileMenu) instead, so this bar never gets cramped and
-// stays a fixed, memorable layout. Timeline Only has so few sections to
-// begin with (Dashboard, Wedding Day, Contacts) that all of them fit
-// directly in the bar instead, rather than burying Contacts a tap deeper
-// in the hamburger menu the way it is for every other role.
-const TIMELINE_ONLY_PRIMARY_NAV_KEYS = ["dashboard", "wedding-day", "contacts"];
-
+// everyone else — Dashboard moved to a header shortcut (see Header.tsx),
+// and Vendors, Sharing, Activity and Settings live in the hamburger menu
+// (MobileMenu) instead, so this bar never gets cramped and stays a fixed,
+// memorable layout. Timeline Only gets a different fixed set — see
+// TIMELINE_ONLY_PRIMARY_NAV_KEYS in NavItems.ts.
 export function BottomNav() {
   const pathname = usePathname();
   const { role } = useWedding();
   const visible = visibleNavSections(role);
-  const primaryKeys = role === "timeline_viewer" ? TIMELINE_ONLY_PRIMARY_NAV_KEYS : PRIMARY_NAV_KEYS;
+  const primaryKeys = primaryNavKeysFor(role);
   const items = ALL_NAV_ITEMS.filter((item) => primaryKeys.includes(item.key) && visible.includes(item.key));
 
   return (

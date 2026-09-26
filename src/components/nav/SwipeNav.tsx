@@ -2,7 +2,7 @@
 
 import { useMemo, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
-import { ALL_NAV_ITEMS, PRIMARY_NAV_KEYS } from "./NavItems";
+import { ALL_NAV_ITEMS, primaryNavKeysFor } from "./NavItems";
 import { useWedding } from "@/lib/wedding/WeddingProvider";
 import { visibleNavSections } from "@/lib/utils/permissions";
 
@@ -23,7 +23,8 @@ export function SwipeNav({ children }: { children: React.ReactNode }) {
 
   const items = useMemo(() => {
     const visible = visibleNavSections(role);
-    return ALL_NAV_ITEMS.filter((item) => PRIMARY_NAV_KEYS.includes(item.key) && visible.includes(item.key));
+    const primaryKeys = primaryNavKeysFor(role);
+    return ALL_NAV_ITEMS.filter((item) => primaryKeys.includes(item.key) && visible.includes(item.key));
   }, [role]);
 
   const touchStart = useRef<{ x: number; y: number } | null>(null);
