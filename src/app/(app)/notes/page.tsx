@@ -11,8 +11,8 @@ import { Button } from "@/components/ui/Button";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
 import { AddNoteCategoryForm } from "@/components/notes/AddNoteCategoryForm";
 import { NoteModal } from "@/components/notes/NoteModal";
+import { NoteViewModal } from "@/components/notes/NoteViewModal";
 import { formatDate } from "@/lib/utils/date";
-import { linkifyText } from "@/lib/utils/linkify";
 import { canEdit } from "@/lib/utils/permissions";
 import type { Note, NoteCategory } from "@/lib/types/database";
 
@@ -26,6 +26,7 @@ export default function NotesPage() {
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingNote, setEditingNote] = useState<Note | null>(null);
+  const [viewingNote, setViewingNote] = useState<Note | null>(null);
   const [addCategoryId, setAddCategoryId] = useState<string | null>(null);
   // Bumped on every open so NoteModal (whose fields only seed from `note`
   // on mount) remounts fresh instead of showing whichever note's data
@@ -61,6 +62,7 @@ export default function NotesPage() {
   }
 
   function openEdit(note: Note) {
+    setViewingNote(null);
     setEditingNote(note);
     setModalKey((k) => k + 1);
     setModalOpen(true);
@@ -104,12 +106,13 @@ export default function NotesPage() {
               </div>
               <div className="space-y-2">
                 {group.notes.map((note) => (
-                  <Card key={note.id} className="cursor-pointer space-y-1" onClick={() => openEdit(note)}>
-                    <div className="flex items-start justify-between gap-2">
-                      <p className="text-sm font-medium">{note.title || "Untitled"}</p>
-                      <span className="shrink-0 text-xs text-muted">{formatDate(note.updated_at)}</span>
-                    </div>
-                    <p className="whitespace-pre-wrap text-sm text-ink">{linkifyText(note.content)}</p>
+                  <Card
+                    key={note.id}
+                    className="flex cursor-pointer items-center justify-between gap-2"
+                    onClick={() => setViewingNote(note)}
+                  >
+                    <p className="text-sm font-medium">{note.title || "Untitled"}</p>
+                    <span className="shrink-0 text-xs text-muted">{formatDate(note.updated_at)}</span>
                   </Card>
                 ))}
                 {group.notes.length === 0 && <p className="text-xs text-muted">No notes in this category yet.</p>}
@@ -137,6 +140,14 @@ export default function NotesPage() {
         editable={editable}
         onSaved={refreshNotes}
         onCategoryAdded={refreshCategories}
+      />
+
+      <NoteViewModal
+        note={viewingNote}
+        categories={categories}
+        editable={editable}
+        onClose={() => setViewingNote(null)}
+        onEdit={() => viewingNote && openEdit(viewingNote)}
       />
 
       <ConfirmDialog

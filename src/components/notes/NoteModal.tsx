@@ -8,6 +8,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Select, Textarea } from "@/components/ui/Input";
 import { ConfirmDialog } from "@/components/ui/ConfirmDialog";
+import { INSPIRATION_BUCKET, inspirationPhotoUrl, sanitizeFilename } from "@/lib/utils/inspirationPhotos";
 import type { Note, NoteCategory } from "@/lib/types/database";
 
 export function NoteModal({
@@ -39,6 +40,13 @@ export function NoteModal({
   const [categoryId, setCategoryId] = useState(note?.category_id ?? defaultCategoryId ?? "");
   const [newCategoryName, setNewCategoryName] = useState("");
   const [content, setContent] = useState(note?.content ?? "");
+  const [photoPath, setPhotoPath] = useState(note?.photo_path ?? null);
+  const [photoFile, setPhotoFile] = useState<File | null>(null);
+  const [photoPreviewUrl, setPhotoPreviewUrl] = useState<string | null>(
+    note?.photo_path ? inspirationPhotoUrl(note.photo_path) : null
+  );
+  const [removingPhoto, setRemovingPhoto] = useState(false);
+  const [addToInspiration, setAddToInspiration] = useState(false);
   const [saving, setSaving] = useState(false);
   const [contentError, setContentError] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -49,7 +57,25 @@ export function NoteModal({
     setCategoryId(note?.category_id ?? defaultCategoryId ?? "");
     setNewCategoryName("");
     setContent(note?.content ?? "");
+    setPhotoPath(note?.photo_path ?? null);
+    setPhotoFile(null);
+    setPhotoPreviewUrl(note?.photo_path ? inspirationPhotoUrl(note.photo_path) : null);
+    setRemovingPhoto(false);
+    setAddToInspiration(false);
     setContentError(false);
+  }
+
+  function handlePhotoChange(e: React.ChangeEvent<HTMLInputElement>) {
+    const file = e.target.files?.[0] ?? null;
+    setPhotoFile(file);
+    setRemovingPhoto(false);
+    setPhotoPreviewUrl(file ? URL.createObjectURL(file) : photoPath ? inspirationPhotoUrl(photoPath) : null);
+  }
+
+  function handleRemovePhoto() {
+    setPhotoFile(null);
+    setRemovingPhoto(true);
+    setPhotoPreviewUrl(null);
   }
 
   async function handleSave() {
@@ -85,11 +111,28 @@ export function NoteModal({
       onCategoryAdded?.();
     }
 
+    // Resolve the photo before touching the note row: a fresh file replaces
+    // (and removes) whatever was there, "Remove" clears it, and leaving both
+    // alone keeps the existing one.
+    let resolvedPhotoPath = photoPath;
+    if (photoFile) {
+      if (photoPath) {
+        await supabase.storage.from(INSPIRATION_BUCKET).remove([photoPath]);
+      }
+      const path = `weddings/${wedding.id}/notes/${crypto.randomUUID()}-${sanitizeFilename(photoFile.name)}`;
+      const { error: uploadError } = await supabase.storage.from(INSPIRATION_BUCKET).upload(path, photoFile);
+      resolvedPhotoPath = uploadError ? photoPath : path;
+    } else if (removingPhoto && photoPath) {
+      await supabase.storage.from(INSPIRATION_BUCKET).remove([photoPath]);
+      resolvedPhotoPath = null;
+    }
+
     const payload = {
       wedding_id: wedding.id,
       category_id: resolvedCategoryId,
       title: title.trim() || null,
       content: content.trim(),
+      photo_path: resolvedPhotoPath,
     };
 
     let noteId = note?.id;
@@ -102,6 +145,26 @@ export function NoteModal({
         .select()
         .single();
       noteId = data?.id;
+    }
+
+    if (addToInspiration && resolvedPhotoPath) {
+      // A separate copy of the file, not the same storage row — so
+      // removing the photo from this note (or from Inspiration) later
+      // never affects the other.
+      const originalFilename = resolvedPhotoPath.split("/").pop() ?? "photo.jpg";
+      const inspirationPath = `weddings/${wedding.id}/inspiration/${crypto.randomUUID()}-${originalFilename}`;
+      const { error: copyError } = await supabase.storage
+        .from(INSPIRATION_BUCKET)
+        .copy(resolvedPhotoPath, inspirationPath);
+      if (!copyError) {
+        await supabase.from("inspiration_photos").insert({
+          wedding_id: wedding.id,
+          category_id: null,
+          storage_path: inspirationPath,
+          caption: title.trim() || null,
+          uploaded_by: user.id,
+        });
+      }
     }
 
     await logActivity(supabase, {
@@ -121,6 +184,9 @@ export function NoteModal({
   async function handleDelete() {
     if (!note || !wedding || !user) return;
     setConfirmingDelete(false);
+    if (note.photo_path) {
+      await supabase.storage.from(INSPIRATION_BUCKET).remove([note.photo_path]);
+    }
     await supabase.from("notes").delete().eq("id", note.id);
     await logActivity(supabase, {
       weddingId: wedding.id,
@@ -198,6 +264,36 @@ export function NoteModal({
             disabled={!editable}
           />
         </Field>
+
+        <div>
+          <span className="mb-1.5 block text-sm font-medium">Photo (optional)</span>
+          {photoPreviewUrl && (
+            // eslint-disable-next-line @next/next/no-img-element -- same
+            // external-storage / unknown-dimensions reasoning as Inspiration's
+            // MasonryGallery.
+            <img src={photoPreviewUrl} alt="" className="mb-2 block max-h-56 w-full rounded-xl object-cover" />
+          )}
+          {editable && (
+            <div className="flex items-center gap-2">
+              <Input type="file" accept="image/*" onChange={handlePhotoChange} className="flex-1" />
+              {photoPreviewUrl && (
+                <Button type="button" variant="secondary" onClick={handleRemovePhoto}>
+                  Remove
+                </Button>
+              )}
+            </div>
+          )}
+          {editable && (photoFile || (photoPath && !removingPhoto)) && (
+            <label className="mt-2 flex items-center gap-1.5 text-sm">
+              <input
+                type="checkbox"
+                checked={addToInspiration}
+                onChange={(e) => setAddToInspiration(e.target.checked)}
+              />
+              Also add this photo to the Inspiration board
+            </label>
+          )}
+        </div>
 
         {editable && (
           <div className="flex gap-2">
