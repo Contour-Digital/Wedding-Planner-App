@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { createClient } from "@/lib/supabase/client";
 import { useWedding } from "@/lib/wedding/WeddingProvider";
 import { useInspirationCategories } from "@/lib/hooks/useInspirationCategories";
@@ -50,9 +50,36 @@ export function NoteModal({
   const [removingPhoto, setRemovingPhoto] = useState(false);
   const [addToInspiration, setAddToInspiration] = useState(false);
   const [inspirationCategoryId, setInspirationCategoryId] = useState("");
+  // The inspiration_photos row this note's photo was already copied to (if
+  // any), found by looking up source_note_id — without this, reopening the
+  // note to edit it always showed the checkbox unchecked, and checking it
+  // again created a second copy instead of recognizing the first.
+  const [existingInspirationPhotoId, setExistingInspirationPhotoId] = useState<string | null>(null);
   const [saving, setSaving] = useState(false);
   const [contentError, setContentError] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
+
+  useEffect(() => {
+    if (!note?.id) return;
+    let cancelled = false;
+    supabase
+      .from("inspiration_photos")
+      .select("id, category_id")
+      .eq("source_note_id", note.id)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (cancelled || !data) return;
+        setExistingInspirationPhotoId(data.id);
+        setAddToInspiration(true);
+        setInspirationCategoryId(data.category_id ?? "");
+      });
+    return () => {
+      cancelled = true;
+    };
+    // Runs once per mount — this modal remounts (via a bumped key) every
+    // time it's opened for a different note.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   function reset() {
     setTitle(note?.title ?? "");
@@ -64,8 +91,13 @@ export function NoteModal({
     setPhotoFile(null);
     setPhotoPreviewUrl(note?.photo_path ? inspirationPhotoUrl(note.photo_path) : null);
     setRemovingPhoto(false);
-    setAddToInspiration(false);
-    setInspirationCategoryId("");
+    // Only clear these when there's no existing link to revert to —
+    // otherwise this would wipe out a real "already on the board" state
+    // that a Cancel shouldn't touch.
+    if (!existingInspirationPhotoId) {
+      setAddToInspiration(false);
+      setInspirationCategoryId("");
+    }
     setContentError(false);
   }
 
@@ -151,25 +183,46 @@ export function NoteModal({
       noteId = data?.id;
     }
 
-    if (addToInspiration && resolvedPhotoPath) {
-      // A separate copy of the file, not the same storage row — so
-      // removing the photo from this note (or from Inspiration) later
-      // never affects the other.
-      const originalFilename = resolvedPhotoPath.split("/").pop() ?? "photo.jpg";
-      const inspirationPath = `weddings/${wedding.id}/inspiration/${crypto.randomUUID()}-${originalFilename}`;
-      const { error: copyError } = await supabase.storage
-        .from(INSPIRATION_BUCKET)
-        .copy(resolvedPhotoPath, inspirationPath);
-      if (!copyError) {
-        await supabase.from("inspiration_photos").insert({
-          wedding_id: wedding.id,
-          category_id: inspirationCategoryId || null,
-          storage_path: inspirationPath,
-          caption: title.trim() || null,
-          uploaded_by: user.id,
-          source_note_id: noteId,
-        });
+    if (resolvedPhotoPath && addToInspiration) {
+      if (existingInspirationPhotoId) {
+        // Already copied over on an earlier save — never duplicate it,
+        // just let the category change follow.
+        await supabase
+          .from("inspiration_photos")
+          .update({ category_id: inspirationCategoryId || null })
+          .eq("id", existingInspirationPhotoId);
+      } else {
+        // A separate copy of the file, not the same storage row — so
+        // removing the photo from this note (or from Inspiration) later
+        // never affects the other.
+        const originalFilename = resolvedPhotoPath.split("/").pop() ?? "photo.jpg";
+        const inspirationPath = `weddings/${wedding.id}/inspiration/${crypto.randomUUID()}-${originalFilename}`;
+        const { error: copyError } = await supabase.storage
+          .from(INSPIRATION_BUCKET)
+          .copy(resolvedPhotoPath, inspirationPath);
+        if (!copyError) {
+          await supabase.from("inspiration_photos").insert({
+            wedding_id: wedding.id,
+            category_id: inspirationCategoryId || null,
+            storage_path: inspirationPath,
+            caption: title.trim() || null,
+            uploaded_by: user.id,
+            source_note_id: noteId,
+          });
+        }
       }
+    } else if (existingInspirationPhotoId && !addToInspiration) {
+      // Unchecked — remove the linked Inspiration copy entirely rather
+      // than leaving an orphaned board photo behind.
+      const { data: linkedPhoto } = await supabase
+        .from("inspiration_photos")
+        .select("storage_path")
+        .eq("id", existingInspirationPhotoId)
+        .maybeSingle();
+      if (linkedPhoto) {
+        await supabase.storage.from(INSPIRATION_BUCKET).remove([linkedPhoto.storage_path]);
+      }
+      await supabase.from("inspiration_photos").delete().eq("id", existingInspirationPhotoId);
     }
 
     await logActivity(supabase, {
@@ -296,7 +349,9 @@ export function NoteModal({
                   checked={addToInspiration}
                   onChange={(e) => setAddToInspiration(e.target.checked)}
                 />
-                Also add this photo to the Inspiration board
+                {existingInspirationPhotoId
+                  ? "On the Inspiration board (uncheck to remove it)"
+                  : "Also add this photo to the Inspiration board"}
               </label>
               {addToInspiration && (
                 <Select value={inspirationCategoryId} onChange={(e) => setInspirationCategoryId(e.target.value)}>
