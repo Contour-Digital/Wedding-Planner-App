@@ -140,3 +140,13 @@ export function BellIcon(props: IconProps) {
     </svg>
   );
 }
+
+export function NoteIcon(props: IconProps) {
+  return (
+    <svg {...base} {...props}>
+      <path d="M6 4h9l4 4v12a1 1 0 0 1-1 1H6a1 1 0 0 1-1-1V5a1 1 0 0 1 1-1Z" />
+      <path d="M15 4v4h4" />
+      <path d="M8 12.5h8M8 16h5" />
+    </svg>
+  );
+}

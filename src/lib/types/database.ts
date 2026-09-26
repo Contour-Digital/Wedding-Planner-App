@@ -247,6 +247,25 @@ export interface InspirationPhotoComment {
   created_at: string;
 }
 
+export interface NoteCategory {
+  id: string;
+  wedding_id: string;
+  name: string;
+  sort_order: number;
+  created_at: string;
+}
+
+export interface Note {
+  id: string;
+  wedding_id: string;
+  category_id: string | null;
+  title: string | null;
+  content: string;
+  created_by: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 // One row per (user, wedding) — the Notifications tab's toggles. Missing a
 // row (nobody has saved preferences yet) means every category defaults to
 // on, matching the column defaults in migration 0020.

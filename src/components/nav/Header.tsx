@@ -1,16 +1,23 @@
 "use client";
 
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { useWedding } from "@/lib/wedding/WeddingProvider";
 import { createClient } from "@/lib/supabase/client";
 import { weddingCountdown } from "@/lib/utils/date";
+import { HomeIcon } from "@/components/ui/icons";
 import { MobileMenu } from "./MobileMenu";
 
 export function Header({ title }: { title: string }) {
-  const { wedding } = useWedding();
+  const { wedding, role } = useWedding();
   const router = useRouter();
   const supabase = createClient();
   const countdown = weddingCountdown(wedding?.wedding_date);
+  // Dashboard is one of Timeline Only's few bottom-tab sections already
+  // (see BottomNav's TIMELINE_ONLY_PRIMARY_NAV_KEYS), so this shortcut
+  // would just duplicate it there — every other role lost Dashboard from
+  // the bottom bar to make room for Notes, so they get it here instead.
+  const showDashboardShortcut = role !== "timeline_viewer";
 
   async function signOut() {
     await supabase.auth.signOut();
@@ -61,6 +68,17 @@ export function Header({ title }: { title: string }) {
             >
               Sign out
             </button>
+            {/* Mobile only, and to the left of the hamburger menu — Dashboard's
+                own spot in the bottom tab bar (see NavItems.ts). */}
+            {showDashboardShortcut && (
+              <Link
+                href="/dashboard"
+                aria-label="Dashboard"
+                className="flex h-10 w-10 items-center justify-center rounded-full border border-onPrimaryLine text-onPrimary sm:hidden"
+              >
+                <HomeIcon className="h-5 w-5" />
+              </Link>
+            )}
             <MobileMenu />
           </div>
         </div>

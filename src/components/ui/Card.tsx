@@ -1,8 +1,21 @@
 import { clsx } from "clsx";
 
-export function Card({ children, className }: { children: React.ReactNode; className?: string }) {
+export function Card({
+  children,
+  className,
+  onClick,
+}: {
+  children: React.ReactNode;
+  className?: string;
+  onClick?: () => void;
+}) {
   return (
-    <div className={clsx("rounded-2xl border border-line bg-white p-4 sm:p-5", className)}>{children}</div>
+    <div
+      className={clsx("rounded-2xl border border-line bg-white p-4 sm:p-5", className)}
+      onClick={onClick}
+    >
+      {children}
+    </div>
   );
 }
 
