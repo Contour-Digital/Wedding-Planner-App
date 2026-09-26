@@ -261,6 +261,7 @@ export interface Note {
   category_id: string | null;
   title: string | null;
   content: string;
+  photo_path: string | null;
   created_by: string | null;
   created_at: string;
   updated_at: string;

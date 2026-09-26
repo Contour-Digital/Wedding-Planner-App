@@ -8,3 +8,10 @@ export const INSPIRATION_BUCKET = "inspiration-photos";
 export function inspirationPhotoUrl(storagePath: string) {
   return createClient().storage.from(INSPIRATION_BUCKET).getPublicUrl(storagePath).data.publicUrl;
 }
+
+// Shared by every uploader into this bucket (Inspiration's own upload modal,
+// and Notes' optional photo) so a filename's storage path always stays a
+// safe, predictable object key.
+export function sanitizeFilename(name: string) {
+  return name.replace(/[^a-zA-Z0-9._-]/g, "-");
+}

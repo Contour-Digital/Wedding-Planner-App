@@ -7,12 +7,8 @@ import { logActivity } from "@/lib/activity/logActivity";
 import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Select } from "@/components/ui/Input";
-import { INSPIRATION_BUCKET } from "@/lib/utils/inspirationPhotos";
+import { INSPIRATION_BUCKET, sanitizeFilename } from "@/lib/utils/inspirationPhotos";
 import type { InspirationCategory } from "@/lib/types/database";
-
-function sanitizeFilename(name: string) {
-  return name.replace(/[^a-zA-Z0-9._-]/g, "-");
-}
 
 export function UploadPhotoModal({
   open,
