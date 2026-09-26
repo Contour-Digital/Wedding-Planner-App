@@ -4,7 +4,6 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Sidebar } from "@/components/nav/Sidebar";
 import { BottomNav } from "@/components/nav/BottomNav";
-import { SwipeNav } from "@/components/nav/SwipeNav";
 import { useWedding, getCachedWeddingLabel } from "@/lib/wedding/WeddingProvider";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
@@ -53,7 +52,7 @@ export default function AppLayout({ children }: { children: React.ReactNode }) {
           element, and the page along with it, wider than the viewport
           instead of scrolling contained within just that one row. */}
       <main className="min-w-0 flex-1 pb-[calc(6rem+env(safe-area-inset-bottom))] sm:pb-0">
-        <SwipeNav>{children}</SwipeNav>
+        {children}
       </main>
       <BottomNav />
     </div>
