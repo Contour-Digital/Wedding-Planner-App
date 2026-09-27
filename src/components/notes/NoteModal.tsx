@@ -64,14 +64,31 @@ export function NoteModal({
     let cancelled = false;
     supabase
       .from("inspiration_photos")
-      .select("id, category_id")
+      .select("id, category_id, storage_path")
       .eq("source_note_id", note.id)
-      .maybeSingle()
-      .then(({ data }) => {
-        if (cancelled || !data) return;
-        setExistingInspirationPhotoId(data.id);
+      .order("created_at", { ascending: true })
+      .then(async ({ data }) => {
+        if (cancelled || !data || data.length === 0) return;
+        const [keep, ...extras] = data;
+        // Self-heal: an earlier version of this check used .maybeSingle(),
+        // which silently failed (leaving the checkbox unchecked, so saving
+        // again created yet another copy) as soon as a note ended up
+        // linked to more than one Inspiration photo. Keep only the oldest
+        // and clean up the rest instead of letting them keep multiplying.
+        if (extras.length > 0) {
+          await supabase.storage.from(INSPIRATION_BUCKET).remove(extras.map((e) => e.storage_path));
+          await supabase
+            .from("inspiration_photos")
+            .delete()
+            .in(
+              "id",
+              extras.map((e) => e.id)
+            );
+        }
+        if (cancelled) return;
+        setExistingInspirationPhotoId(keep.id);
         setAddToInspiration(true);
-        setInspirationCategoryId(data.category_id ?? "");
+        setInspirationCategoryId(keep.category_id ?? "");
       });
     return () => {
       cancelled = true;
