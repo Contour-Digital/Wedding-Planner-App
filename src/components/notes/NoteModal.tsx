@@ -55,6 +55,9 @@ export function NoteModal({
   // note to edit it always showed the checkbox unchecked, and checking it
   // again created a second copy instead of recognizing the first.
   const [existingInspirationPhotoId, setExistingInspirationPhotoId] = useState<string | null>(null);
+  // True until that lookup returns — Save waits on it, since saving before
+  // it lands would treat an already-linked photo as new and copy it again.
+  const [checkingInspirationLink, setCheckingInspirationLink] = useState(Boolean(note?.id));
   const [saving, setSaving] = useState(false);
   const [contentError, setContentError] = useState(false);
   const [confirmingDelete, setConfirmingDelete] = useState(false);
@@ -68,7 +71,11 @@ export function NoteModal({
       .eq("source_note_id", note.id)
       .order("created_at", { ascending: true })
       .then(async ({ data }) => {
-        if (cancelled || !data || data.length === 0) return;
+        if (cancelled) return;
+        if (!data || data.length === 0) {
+          setCheckingInspirationLink(false);
+          return;
+        }
         const [keep, ...extras] = data;
         // Self-heal: an earlier version of this check used .maybeSingle(),
         // which silently failed (leaving the checkbox unchecked, so saving
@@ -89,6 +96,7 @@ export function NoteModal({
         setExistingInspirationPhotoId(keep.id);
         setAddToInspiration(true);
         setInspirationCategoryId(keep.category_id ?? "");
+        setCheckingInspirationLink(false);
       });
     return () => {
       cancelled = true;
@@ -386,7 +394,7 @@ export function NoteModal({
 
         {editable && (
           <div className="flex gap-2">
-            <Button fullWidth onClick={handleSave} disabled={saving}>
+            <Button fullWidth onClick={handleSave} disabled={saving || checkingInspirationLink}>
               {saving ? "Saving…" : "Save note"}
             </Button>
             {note && (
