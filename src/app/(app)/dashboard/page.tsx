@@ -61,7 +61,7 @@ export default function DashboardPage() {
             <h2 className="mb-3 text-sm font-semibold uppercase tracking-wide text-muted">Budget</h2>
             <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
               <StatCard label="Wedding Budget" value={formatCurrency(totals.totalBudget, wedding?.currency)} />
-              <StatCard label="Committed" value={formatCurrency(totals.committed, wedding?.currency)} />
+              <StatCard label="Committed Payments" value={formatCurrency(totals.committed, wedding?.currency)} />
               <StatCard label="Paid" value={formatCurrency(totals.paid, wedding?.currency)} tone="good" />
               <StatCard
                 label="Outstanding"
