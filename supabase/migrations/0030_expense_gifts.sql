@@ -1,8 +1,7 @@
 -- Lets an expense be marked as a gift (e.g. a wedding dress the parents paid
--- for). A gift's total cost still counts toward what the wedding costs
--- (committed / total spend), but nothing is owed on it: the app shows it with
--- no outstanding amount, leaves its instalments out of upcoming payments, and
--- payment-due reminders skip it. Defaults to false, so every existing expense
+-- for). A gift isn't the couple's money: the app leaves it out of committed
+-- spend and category totals, shows it with no outstanding amount, leaves its
+-- instalments out of upcoming payments, and payment-due reminders skip it. Defaults to false, so every existing expense
 -- stays exactly as it was.
 alter table public.expenses
   add column is_gift boolean not null default false;

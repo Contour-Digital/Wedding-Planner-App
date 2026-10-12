@@ -31,7 +31,7 @@ export default function VendorsPage() {
     const rows = vendors.map((vendor) => {
       const base = [vendor.name, vendor.type ?? "", VENDOR_STATUS_LABEL[vendor.status]];
       if (!showFinancials) return base;
-      const committed = sum(expenses.filter((e) => e.vendor_id === vendor.id).map((e) => e.total_amount));
+      const committed = sum(expenses.filter((e) => e.vendor_id === vendor.id && !e.is_gift).map((e) => e.total_amount));
       return [...base, committed];
     });
     downloadCsv(`vendors-${new Date().toISOString().slice(0, 10)}.csv`, headers, rows);
@@ -54,8 +54,8 @@ export default function VendorsPage() {
             const totals = linkedExpenses.map((e) =>
               computeExpenseTotals(e.total_amount, e.deposit_amount, e.instalments, e.is_gift)
             );
-            const committed = sum(linkedExpenses.map((e) => e.total_amount));
-            const paid = sum(totals.map((t) => t.paidAmount));
+            const committed = sum(linkedExpenses.filter((e) => !e.is_gift).map((e) => e.total_amount));
+            const paid = sum(totals.filter((t) => t.status !== "gift").map((t) => t.paidAmount));
             const balance = committed - paid;
 
             return (

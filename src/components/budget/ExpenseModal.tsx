@@ -323,7 +323,7 @@ export function ExpenseModal({
           </label>
           {isGift && (
             <p className="mt-1 text-xs text-muted">
-              Still counts toward your total spend, but won&apos;t show as outstanding or as a payment due.
+              Won&apos;t count toward your committed spend or category totals, or show as a payment due.
             </p>
           )}
         </div>
