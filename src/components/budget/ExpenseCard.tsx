@@ -69,11 +69,15 @@ export function ExpenseCard({
         </div>
       </div>
 
-      <div className="mt-3 grid grid-cols-3 gap-2 text-xs text-muted">
-        <div>Paid: {formatCurrency(totals.paidAmount, currency)}</div>
-        <div>Outstanding: {formatCurrency(totals.outstandingAmount, currency)}</div>
-        <div>Deposit: {formatCurrency(expense.deposit_amount, currency)}</div>
-      </div>
+      {/* Once it's paid in full the badge says everything these would —
+          Paid equals the total and nothing's outstanding — so they're hidden. */}
+      {totals.status !== "paid_in_full" && (
+        <div className="mt-3 grid grid-cols-3 gap-2 text-xs text-muted">
+          <div>Paid: {formatCurrency(totals.paidAmount, currency)}</div>
+          <div>Outstanding: {formatCurrency(totals.outstandingAmount, currency)}</div>
+          <div>Deposit: {formatCurrency(expense.deposit_amount, currency)}</div>
+        </div>
+      )}
 
       <div className="mt-3 flex flex-wrap items-center gap-2">
         {expense.instalments.length > 0 && (
