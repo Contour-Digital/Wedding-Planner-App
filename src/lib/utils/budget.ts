@@ -26,7 +26,7 @@ export function categoryTotals(
       .filter((e) => e.category_id === category.id)
       .filter((e) => countsTowardBudget(e, vendorsById));
     const totals = categoryExpenses.map((e) =>
-      computeExpenseTotals(e.total_amount, e.deposit_amount, e.instalments)
+      computeExpenseTotals(e.total_amount, e.deposit_amount, e.instalments, e.is_gift)
     );
     const committed = sum(categoryExpenses.map((e) => e.total_amount));
     const paid = sum(totals.map((t) => t.paidAmount));
@@ -51,7 +51,7 @@ export function weddingTotals(
 ): WeddingTotals {
   const vendorsById = new Map(vendors.map((v) => [v.id, v]));
   const countedExpenses = expenses.filter((e) => countsTowardBudget(e, vendorsById));
-  const totals = countedExpenses.map((e) => computeExpenseTotals(e.total_amount, e.deposit_amount, e.instalments));
+  const totals = countedExpenses.map((e) => computeExpenseTotals(e.total_amount, e.deposit_amount, e.instalments, e.is_gift));
   const committed = sum(countedExpenses.map((e) => e.total_amount));
   const paid = sum(totals.map((t) => t.paidAmount));
   const outstanding = sum(totals.map((t) => t.outstandingAmount));

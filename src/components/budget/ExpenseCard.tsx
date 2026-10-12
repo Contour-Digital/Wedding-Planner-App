@@ -28,7 +28,7 @@ export function ExpenseCard({
   const { wedding, user } = useWedding();
   const supabase = createClient();
   const [expanded, setExpanded] = useState(false);
-  const totals = computeExpenseTotals(expense.total_amount, expense.deposit_amount, expense.instalments);
+  const totals = computeExpenseTotals(expense.total_amount, expense.deposit_amount, expense.instalments, expense.is_gift);
 
   async function toggleInstalmentPaid(instalmentId: string, paid: boolean, label: string, amount: number) {
     await supabase
@@ -75,14 +75,16 @@ export function ExpenseCard({
         <div>Deposit: {formatCurrency(expense.deposit_amount, currency)}</div>
       </div>
 
-      {expense.instalments.length > 0 && (
-        <button
-          className="mt-3 text-xs font-medium text-primaryStrong"
-          onClick={() => setExpanded((v) => !v)}
-        >
-          {expanded ? "Hide" : "Show"} instalments ({expense.instalments.length})
+      <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2">
+        {expense.instalments.length > 0 && (
+          <button className="text-xs font-medium text-primaryStrong" onClick={() => setExpanded((v) => !v)}>
+            {expanded ? "Hide" : "Show"} instalments ({expense.instalments.length})
+          </button>
+        )}
+        <button onClick={onEdit} className="text-xs font-medium text-primaryStrong">
+          Edit expense
         </button>
-      )}
+      </div>
 
       {expanded && (
         <div className="mt-2 space-y-2 border-t border-line pt-2">
@@ -117,10 +119,6 @@ export function ExpenseCard({
           })}
         </div>
       )}
-
-      <button onClick={onEdit} className="mt-3 text-xs font-medium text-primaryStrong">
-        Edit expense
-      </button>
     </div>
   );
 }

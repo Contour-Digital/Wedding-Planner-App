@@ -1,6 +1,6 @@
 import type { Expense, ExpenseInstalment } from "./database";
 
-export type PaymentStatus = "not_started" | "deposit_paid" | "partially_paid" | "paid_in_full" | "overdue";
+export type PaymentStatus = "not_started" | "deposit_paid" | "partially_paid" | "paid_in_full" | "overdue" | "gift";
 
 export interface ExpenseWithInstalments extends Expense {
   instalments: ExpenseInstalment[];

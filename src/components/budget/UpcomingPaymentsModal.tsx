@@ -21,7 +21,9 @@ export function UpcomingPaymentsModal({
   vendors: Vendor[];
   currency?: string;
 }) {
+  // Gifts never have anything owed on them, whatever instalments they carry.
   const upcoming = expenses
+    .filter((e) => !e.is_gift)
     .flatMap((e) => {
       const vendorName = vendors.find((v) => v.id === e.vendor_id)?.name;
       return e.instalments.map((i) => ({ ...i, expenseId: e.id, expenseName: e.name, vendorName }));

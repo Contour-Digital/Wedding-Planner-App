@@ -4,23 +4,34 @@ import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
 import { Sidebar } from "@/components/nav/Sidebar";
 import { BottomNav } from "@/components/nav/BottomNav";
+import { Button } from "@/components/ui/Button";
 import { useWedding, getCachedWeddingLabel } from "@/lib/wedding/WeddingProvider";
 
 export default function AppLayout({ children }: { children: React.ReactNode }) {
-  const { user, wedding, loading, weddingIds } = useWedding();
+  const { user, wedding, loading, loadError, weddingIds, refresh } = useWedding();
   const router = useRouter();
   // Read once on mount rather than every render — this only ever needs to
   // reflect whatever was cached before this page load started.
   const [cachedLabel] = useState(getCachedWeddingLabel);
 
   useEffect(() => {
-    if (loading) return;
+    if (loading || loadError) return;
     if (!user) {
       router.replace("/login");
     } else if (weddingIds.length === 0) {
       router.replace("/onboarding");
     }
-  }, [loading, user, weddingIds, router]);
+  }, [loading, loadError, user, weddingIds, router]);
+
+  if (loadError && !wedding) {
+    return (
+      <div className="flex min-h-screen flex-col items-center justify-center gap-6 px-6 text-center">
+        <h1 className="font-display text-3xl font-semibold text-ink">{cachedLabel ?? "Wedding Planner"}</h1>
+        <p className="text-sm text-muted">Couldn&apos;t load your wedding. Check your connection and try again.</p>
+        <Button onClick={() => refresh()}>Try again</Button>
+      </div>
+    );
+  }
 
   if (loading || !user || !wedding) {
     // wedding.partner_1/partner_2 themselves aren't available yet here —
