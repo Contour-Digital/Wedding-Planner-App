@@ -140,7 +140,7 @@ export default function BudgetPage() {
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-6">
           <StatCard label="Estimated Total Budget" value={formatCurrency(expectedCosts, wedding?.currency)} />
           <StatCard label="Ideal Budget" value={formatCurrency(totals.totalBudget, wedding?.currency)} />
-          <StatCard label="Committed" value={formatCurrency(totals.committed, wedding?.currency)} />
+          <StatCard label="Committed Payments" value={formatCurrency(totals.committed, wedding?.currency)} />
           <StatCard label="Paid" value={formatCurrency(totals.paid, wedding?.currency)} tone="good" />
           <StatCard
             label="Outstanding Payments"
