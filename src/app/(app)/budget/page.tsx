@@ -167,8 +167,16 @@ export default function BudgetPage() {
 
         <BudgetBreakdownChart categories={byCategory} currency={wedding?.currency} />
 
-        <div className="flex flex-wrap items-center justify-between gap-2">
-          <h3 className="font-display text-lg font-semibold">Categories</h3>
+        <div className="space-y-3">
+          <div className="flex items-center justify-between gap-2">
+            <h3 className="font-display text-xl font-semibold">Categories</h3>
+            <Link
+              href="/budget/categories"
+              className="rounded-full border border-primaryStrong bg-primary/10 px-3 py-1.5 text-xs font-medium text-primaryStrong"
+            >
+              Edit categories
+            </Link>
+          </div>
           <div className="flex flex-wrap items-center gap-2">
             <Select
               value={categorySort}
@@ -187,12 +195,6 @@ export default function BudgetPage() {
                 Arrange categories
               </button>
             )}
-            <Link
-              href="/budget/categories"
-              className="rounded-full border border-primaryStrong bg-primary/10 px-3 py-1.5 text-xs font-medium text-primaryStrong"
-            >
-              Edit categories
-            </Link>
           </div>
         </div>
 

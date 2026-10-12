@@ -9,8 +9,11 @@ import { sum } from "./currency";
 // committed to, even if a deposit happens to already be recorded against
 // it (that's still tracked on the expense itself, just not rolled up here
 // until the vendor's booked). An expense with no vendor always counts —
-// there's nothing to gate it on.
+// there's nothing to gate it on. A gift (paid for by someone else) never
+// counts: it isn't the couple's money, so it stays out of Committed, Paid,
+// Outstanding and every category total.
 function countsTowardBudget(expense: ExpenseWithInstalments, vendorsById: Map<string, Vendor>) {
+  if (expense.is_gift) return false;
   if (!expense.vendor_id) return true;
   return vendorsById.get(expense.vendor_id)?.status === "booked";
 }
