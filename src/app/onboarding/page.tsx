@@ -50,12 +50,23 @@ interface OnboardingDraft {
 export default function OnboardingPage() {
   const router = useRouter();
   const supabase = createClient();
-  const { user } = useWedding();
+  const { user, loading, loadError, weddingIds, refresh } = useWedding();
 
   const [step, setStep] = useState(0);
   const [error, setError] = useState<string | null>(null);
   const [submitting, setSubmitting] = useState(false);
   const [partnerInviteMessage, setPartnerInviteMessage] = useState<string | null>(null);
+
+  // Anyone who already belongs to a wedding has nothing to onboard — send
+  // them on, rather than leaving a fresh wizard on screen if they ever land
+  // here (an old bookmark, or a cold start that briefly couldn't see their
+  // wedding before this was fixed in WeddingProvider).
+  useEffect(() => {
+    if (!loading && !loadError && weddingIds.length > 0 && !submitting && !partnerInviteMessage) {
+      router.replace("/dashboard");
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [loading, loadError, weddingIds]);
 
   const [partner1Name, setPartner1Name] = useState(
     (user?.user_metadata?.full_name as string | undefined) ?? ""
@@ -274,6 +285,10 @@ export default function OnboardingPage() {
       }
     }
 
+    // The app shell decides between dashboard and onboarding from the
+    // provider's weddingIds, which still holds the pre-wedding (empty) list
+    // until it reloads — navigating first would bounce straight back here.
+    await refresh();
     setSubmitting(false);
     router.replace("/dashboard");
     router.refresh();
@@ -296,7 +311,8 @@ export default function OnboardingPage() {
           </Button>
           <Button
             fullWidth
-            onClick={() => {
+            onClick={async () => {
+              await refresh();
               router.replace("/dashboard");
               router.refresh();
             }}

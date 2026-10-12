@@ -114,7 +114,7 @@ export default function BudgetPage() {
     const rows = expenses.map((e) => {
       const category = categories.find((c) => c.id === e.category_id);
       const vendor = vendors.find((v) => v.id === e.vendor_id);
-      const t = computeExpenseTotals(e.total_amount, e.deposit_amount, e.instalments);
+      const t = computeExpenseTotals(e.total_amount, e.deposit_amount, e.instalments, e.is_gift);
       return [
         e.name,
         category?.name ?? "",
@@ -138,7 +138,7 @@ export default function BudgetPage() {
       <PageHeader title="Budget" />
       <div className="space-y-6 p-4 sm:p-6">
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-6">
-          <StatCard label="Total Budget" value={formatCurrency(expectedCosts, wedding?.currency)} />
+          <StatCard label="Estimated Total Budget" value={formatCurrency(expectedCosts, wedding?.currency)} />
           <StatCard label="Ideal Budget" value={formatCurrency(totals.totalBudget, wedding?.currency)} />
           <StatCard label="Committed" value={formatCurrency(totals.committed, wedding?.currency)} />
           <StatCard label="Paid" value={formatCurrency(totals.paid, wedding?.currency)} tone="good" />
@@ -169,7 +169,7 @@ export default function BudgetPage() {
 
         <div className="flex flex-wrap items-center justify-between gap-2">
           <h3 className="font-display text-lg font-semibold">Categories</h3>
-          <div className="flex items-center gap-2">
+          <div className="flex flex-wrap items-center gap-2">
             <Select
               value={categorySort}
               onChange={(e) => changeCategorySort(e.target.value as CategorySort)}
@@ -187,6 +187,12 @@ export default function BudgetPage() {
                 Arrange categories
               </button>
             )}
+            <Link
+              href="/budget/categories"
+              className="rounded-full border border-primaryStrong bg-primary/10 px-3 py-1.5 text-xs font-medium text-primaryStrong"
+            >
+              Edit categories
+            </Link>
           </div>
         </div>
 

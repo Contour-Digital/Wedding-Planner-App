@@ -33,7 +33,8 @@ export default function DashboardPage() {
   const tasksDueThisMonth = openTasks.filter((t) => isDueThisMonth(t.due_date));
   const overdueTasks = openTasks.filter((t) => isOverdue(t.due_date, t.completed));
 
-  const allInstalments = expenses.flatMap((e) => {
+  // Gifts never have anything owed on them, whatever instalments they carry.
+  const allInstalments = expenses.filter((e) => !e.is_gift).flatMap((e) => {
     const vendorName = vendors.find((v) => v.id === e.vendor_id)?.name;
     return e.instalments.map((i) => ({ ...i, expenseId: e.id, expenseName: e.name, vendorName }));
   });

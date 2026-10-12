@@ -165,6 +165,9 @@ export interface Expense {
   name: string;
   total_amount: number;
   deposit_amount: number;
+  // A gift (e.g. paid for by family): still counts toward committed spend,
+  // but nothing is ever outstanding or due on it.
+  is_gift: boolean;
   notes: string | null;
   created_at: string;
   updated_at: string;

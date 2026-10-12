@@ -61,7 +61,7 @@ export default function VendorDetailPage() {
   }
 
   const linkedExpenses = expenses.filter((e) => e.vendor_id === vendor.id);
-  const totals = linkedExpenses.map((e) => computeExpenseTotals(e.total_amount, e.deposit_amount, e.instalments));
+  const totals = linkedExpenses.map((e) => computeExpenseTotals(e.total_amount, e.deposit_amount, e.instalments, e.is_gift));
   const committed = sum(linkedExpenses.map((e) => e.total_amount));
   const paid = sum(totals.map((t) => t.paidAmount));
   const balance = committed - paid;
@@ -122,7 +122,7 @@ export default function VendorDetailPage() {
             </div>
             <div className="space-y-2">
               {linkedExpenses.map((e) => {
-                const t = computeExpenseTotals(e.total_amount, e.deposit_amount, e.instalments);
+                const t = computeExpenseTotals(e.total_amount, e.deposit_amount, e.instalments, e.is_gift);
                 return (
                   <div key={e.id} className="flex items-center justify-between rounded-xl border border-line p-3">
                     <p className="text-sm font-medium">{e.name}</p>

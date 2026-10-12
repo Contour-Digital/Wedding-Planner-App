@@ -1,6 +1,6 @@
 "use client";
 
-import { createContext, useCallback, useContext, useEffect, useMemo, useState } from "react";
+import { createContext, useCallback, useContext, useEffect, useMemo, useRef, useState } from "react";
 import type { User } from "@supabase/supabase-js";
 import { createClient } from "@/lib/supabase/client";
 import type { Wedding, WeddingRole } from "@/lib/types/database";
@@ -10,6 +10,10 @@ interface WeddingContextValue {
   wedding: Wedding | null;
   role: WeddingRole | null;
   loading: boolean;
+  // True when the membership lookup itself failed (network down, session
+  // mid-refresh) — distinct from weddingIds being empty, which means the
+  // user genuinely has no wedding yet and belongs in onboarding.
+  loadError: boolean;
   weddingIds: string[];
   refresh: () => Promise<void>;
   setActiveWeddingId: (id: string) => void;
@@ -42,18 +46,28 @@ export function WeddingProvider({ children }: { children: React.ReactNode }) {
   const [role, setRole] = useState<WeddingRole | null>(null);
   const [weddingIds, setWeddingIds] = useState<string[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadError, setLoadError] = useState(false);
+  // load() runs more than once at startup (the initial call plus
+  // onAuthStateChange's INITIAL_SESSION / TOKEN_REFRESHED events), and the
+  // calls overlap. Only the most recent one may write state, so an earlier
+  // call that raced a token refresh can't land last with stale results.
+  const loadSeq = useRef(0);
 
   const load = useCallback(async () => {
+    const seq = ++loadSeq.current;
+    const isStale = () => seq !== loadSeq.current;
     setLoading(true);
     const {
       data: { user: currentUser },
     } = await supabase.auth.getUser();
+    if (isStale()) return;
     setUser(currentUser);
 
     if (!currentUser) {
       setWedding(null);
       setRole(null);
       setWeddingIds([]);
+      setLoadError(false);
       setLoading(false);
       return;
     }
@@ -64,11 +78,35 @@ export function WeddingProvider({ children }: { children: React.ReactNode }) {
     // cache) wouldn't be stable for anyone belonging to more than one
     // wedding. Oldest-first makes it deterministic and matches the most
     // likely "main" wedding for someone who's ended up in several.
-    const { data: memberships } = await supabase
-      .from("wedding_members")
-      .select("wedding_id, role")
-      .eq("user_id", currentUser.id)
-      .order("created_at", { ascending: true });
+    const fetchMemberships = () =>
+      supabase
+        .from("wedding_members")
+        .select("wedding_id, role")
+        .eq("user_id", currentUser.id)
+        .order("created_at", { ascending: true });
+
+    // Reopening the installed app from the home screen is exactly when the
+    // network and the stored session are least ready: the lookup can fail
+    // outright, or run before the refreshed token is attached and come back
+    // empty under RLS. Both used to read as "no wedding yet" and bounce
+    // straight to onboarding. So an error or an empty result is retried
+    // (with a fresh session) before it's believed, and an error that
+    // persists is surfaced as loadError rather than as zero weddings.
+    let { data: memberships, error: membershipsError } = await fetchMemberships();
+    for (let attempt = 1; attempt <= 2 && (membershipsError || !memberships?.length); attempt++) {
+      await new Promise((resolve) => setTimeout(resolve, 600 * attempt));
+      if (isStale()) return;
+      await supabase.auth.getSession();
+      ({ data: memberships, error: membershipsError } = await fetchMemberships());
+    }
+    if (isStale()) return;
+
+    if (membershipsError) {
+      setLoadError(true);
+      setLoading(false);
+      return;
+    }
+    setLoadError(false);
 
     const ids = (memberships ?? []).map((m) => m.wedding_id);
     setWeddingIds(ids);
@@ -91,6 +129,7 @@ export function WeddingProvider({ children }: { children: React.ReactNode }) {
       .select("*")
       .eq("id", activeId)
       .single();
+    if (isStale()) return;
 
     setWedding(weddingRow ?? null);
     setRole(memberships?.find((m) => m.wedding_id === activeId)?.role as WeddingRole);
@@ -127,7 +166,7 @@ export function WeddingProvider({ children }: { children: React.ReactNode }) {
 
   return (
     <WeddingContext.Provider
-      value={{ user, wedding, role, loading, weddingIds, refresh: load, setActiveWeddingId }}
+      value={{ user, wedding, role, loading, loadError, weddingIds, refresh: load, setActiveWeddingId }}
     >
       {children}
     </WeddingContext.Provider>

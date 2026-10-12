@@ -77,6 +77,7 @@ export function ExpenseModal({
   const [newVendorContactPhone, setNewVendorContactPhone] = useState("");
   const [totalAmount, setTotalAmount] = useState(expense ? String(expense.total_amount) : "");
   const [depositAmount, setDepositAmount] = useState(expense ? String(expense.deposit_amount) : "0");
+  const [isGift, setIsGift] = useState(expense?.is_gift ?? false);
   const [notes, setNotes] = useState(expense?.notes ?? "");
   const [instalments, setInstalments] = useState<DraftInstalment[]>(
     expense?.instalments.map(toDraft) ?? []
@@ -150,6 +151,7 @@ export function ExpenseModal({
       name: name.trim(),
       total_amount: Number(totalAmount) || 0,
       deposit_amount: Number(depositAmount) || 0,
+      is_gift: isGift,
       notes: notes.trim() || null,
     };
 
@@ -314,6 +316,17 @@ export function ExpenseModal({
           />
           Paid in full
         </label>
+        <div>
+          <label className="flex items-center gap-1.5 text-sm">
+            <input type="checkbox" checked={isGift} onChange={(e) => setIsGift(e.target.checked)} />
+            This was a gift
+          </label>
+          {isGift && (
+            <p className="mt-1 text-xs text-muted">
+              Still counts toward your total spend, but won&apos;t show as outstanding or as a payment due.
+            </p>
+          )}
+        </div>
 
         <Field label="Notes">
           <Textarea value={notes} onChange={(e) => setNotes(e.target.value)} />

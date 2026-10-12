@@ -52,7 +52,7 @@ export default function VendorsPage() {
           {vendors.map((vendor) => {
             const linkedExpenses = expenses.filter((e) => e.vendor_id === vendor.id);
             const totals = linkedExpenses.map((e) =>
-              computeExpenseTotals(e.total_amount, e.deposit_amount, e.instalments)
+              computeExpenseTotals(e.total_amount, e.deposit_amount, e.instalments, e.is_gift)
             );
             const committed = sum(linkedExpenses.map((e) => e.total_amount));
             const paid = sum(totals.map((t) => t.paidAmount));

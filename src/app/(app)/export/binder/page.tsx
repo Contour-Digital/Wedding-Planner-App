@@ -203,7 +203,7 @@ export default function ExportBinderPage() {
               </h3>
               <div className="space-y-1">
                 {catExpenses.map((expense) => {
-                  const t = computeExpenseTotals(expense.total_amount, expense.deposit_amount, expense.instalments);
+                  const t = computeExpenseTotals(expense.total_amount, expense.deposit_amount, expense.instalments, expense.is_gift);
                   return (
                     <div key={expense.id} className="flex items-baseline justify-between text-sm">
                       <span>{expense.name}</span>
