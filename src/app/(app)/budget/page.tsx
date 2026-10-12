@@ -167,7 +167,9 @@ export default function BudgetPage() {
 
         <BudgetBreakdownChart categories={byCategory} currency={wedding?.currency} />
 
-        <div className="space-y-3">
+        {/* Extra room above (on top of the page's space-y-6) so the
+            Categories section reads as clearly separate from the chart. */}
+        <div className="space-y-4 pb-2 pt-6">
           <div className="flex items-center justify-between gap-2">
             <h3 className="font-display text-xl font-semibold">Categories</h3>
             <Link
