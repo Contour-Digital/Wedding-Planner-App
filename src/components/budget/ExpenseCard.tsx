@@ -75,13 +75,13 @@ export function ExpenseCard({
         <div>Deposit: {formatCurrency(expense.deposit_amount, currency)}</div>
       </div>
 
-      <div className="mt-3 flex flex-wrap items-center gap-x-6 gap-y-2">
+      <div className="mt-3 flex flex-wrap items-center gap-2">
         {expense.instalments.length > 0 && (
-          <button className="text-xs font-medium text-primaryStrong" onClick={() => setExpanded((v) => !v)}>
+          <button className="rounded-full border border-primaryStrong bg-primary/10 px-3 py-0.5 text-xs font-medium text-primaryStrong" onClick={() => setExpanded((v) => !v)}>
             {expanded ? "Hide" : "Show"} instalments ({expense.instalments.length})
           </button>
         )}
-        <button onClick={onEdit} className="text-xs font-medium text-primaryStrong">
+        <button onClick={onEdit} className="rounded-full border border-primaryStrong bg-primary/10 px-3 py-0.5 text-xs font-medium text-primaryStrong">
           Edit expense
         </button>
       </div>
