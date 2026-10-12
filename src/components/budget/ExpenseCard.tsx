@@ -69,9 +69,9 @@ export function ExpenseCard({
         </div>
       </div>
 
-      {/* Once it's paid in full the badge says everything these would —
-          Paid equals the total and nothing's outstanding — so they're hidden. */}
-      {totals.status !== "paid_in_full" && (
+      {/* Once it's paid in full or a gift, the badge says everything these
+          would (nothing's outstanding), so they're hidden. */}
+      {totals.status !== "paid_in_full" && totals.status !== "gift" && (
         <div className="mt-3 grid grid-cols-3 gap-2 text-xs text-muted">
           <div>Paid: {formatCurrency(totals.paidAmount, currency)}</div>
           <div>Outstanding: {formatCurrency(totals.outstandingAmount, currency)}</div>
