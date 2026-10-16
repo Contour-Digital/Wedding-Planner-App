@@ -182,6 +182,9 @@ export interface ExpenseInstalment {
   due_date: string | null;
   paid: boolean;
   paid_date: string | null;
+  // Money put aside for this instalment ahead of paying it. Independent of
+  // paid; only meaningful while the instalment is still unpaid.
+  saved: boolean;
   reminder_days: ReminderDays;
   label: string | null;
   kind: InstalmentKind;
