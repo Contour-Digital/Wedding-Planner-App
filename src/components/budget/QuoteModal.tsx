@@ -18,6 +18,7 @@ export function QuoteModal({
   vendors,
   quote,
   defaultCategoryId,
+  defaultVendorId,
   onSaved,
 }: {
   open: boolean;
@@ -27,6 +28,8 @@ export function QuoteModal({
   quote?: ExpenseQuote | null;
   // The category whose "+ Add quote" was tapped; ignored when editing.
   defaultCategoryId?: string | null;
+  // Pre-selects a vendor when adding from that vendor's own page.
+  defaultVendorId?: string;
   onSaved: () => void;
 }) {
   const { wedding, user } = useWedding();
@@ -37,10 +40,10 @@ export function QuoteModal({
   // still has something to show; a quote saved without a linked vendor
   // opens in "No vendor" with that label filled in.
   const [vendorMode, setVendorMode] = useState<"none" | "existing" | "new">(
-    quote && !quote.vendor_id ? "none" : vendors.length > 0 ? "existing" : "new"
+    quote && !quote.vendor_id ? "none" : defaultVendorId || vendors.length > 0 ? "existing" : "new"
   );
   const [label, setLabel] = useState(quote && !quote.vendor_id ? quote.vendor_name : "");
-  const [vendorId, setVendorId] = useState(quote?.vendor_id ?? "");
+  const [vendorId, setVendorId] = useState(quote?.vendor_id ?? defaultVendorId ?? "");
   const [newVendorName, setNewVendorName] = useState("");
   const [newVendorContactName, setNewVendorContactName] = useState("");
   const [newVendorContactEmail, setNewVendorContactEmail] = useState("");
@@ -73,6 +76,12 @@ export function QuoteModal({
       resolvedVendorName = label.trim();
     } else if (vendorMode === "existing") {
       resolvedVendorId = vendorId;
+      // Getting a quote from a vendor moves them along to Quote Received,
+      // but never back from Booked.
+      const status = vendors.find((v) => v.id === vendorId)?.status;
+      if (status === "considering" || status === "contacted") {
+        await supabase.from("vendors").update({ status: "quote_received" }).eq("id", vendorId);
+      }
       resolvedVendorName = vendors.find((v) => v.id === vendorId)?.name ?? "";
     } else {
       resolvedVendorName = newVendorName.trim();
