@@ -199,7 +199,10 @@ export default function BudgetPage() {
 
         <div className="flex flex-wrap items-center gap-2">
           <Button onClick={openAdd}>+ Add expense</Button>
-          <Button variant="secondary" onClick={exportCsv} disabled={expenses.length === 0}>
+          <Button variant="secondary" onClick={() => openAddQuote(null)}>
+            + Add quote
+          </Button>
+          <Button variant="outline" onClick={exportCsv} disabled={expenses.length === 0}>
             Export CSV
           </Button>
         </div>
