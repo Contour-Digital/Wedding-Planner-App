@@ -32,14 +32,16 @@ export function QuoteModal({
   const { wedding, user } = useWedding();
   const supabase = createClient();
 
-  // Same choice as the expense form, minus "No vendor": a quote is always
-  // from someone. An older quote saved before it was linked to a vendor
-  // opens in "Create new" with its name filled in.
-  const [vendorMode, setVendorMode] = useState<"existing" | "new">(
-    quote && !quote.vendor_id ? "new" : vendors.length > 0 ? "existing" : "new"
+  // Same choice as the expense form. With no vendor, vendor_name holds a
+  // short label for the quote instead (e.g. "Florist estimate"), so it
+  // still has something to show; a quote saved without a linked vendor
+  // opens in "No vendor" with that label filled in.
+  const [vendorMode, setVendorMode] = useState<"none" | "existing" | "new">(
+    quote && !quote.vendor_id ? "none" : vendors.length > 0 ? "existing" : "new"
   );
+  const [label, setLabel] = useState(quote && !quote.vendor_id ? quote.vendor_name : "");
   const [vendorId, setVendorId] = useState(quote?.vendor_id ?? "");
-  const [newVendorName, setNewVendorName] = useState(quote && !quote.vendor_id ? quote.vendor_name : "");
+  const [newVendorName, setNewVendorName] = useState("");
   const [newVendorContactName, setNewVendorContactName] = useState("");
   const [newVendorContactEmail, setNewVendorContactEmail] = useState("");
   const [newVendorContactPhone, setNewVendorContactPhone] = useState("");
@@ -55,7 +57,8 @@ export function QuoteModal({
 
   async function handleSave() {
     if (!wedding || !user) return;
-    const missingVendor = vendorMode === "existing" ? !vendorId : !newVendorName.trim();
+    const missingVendor =
+      vendorMode === "none" ? !label.trim() : vendorMode === "existing" ? !vendorId : !newVendorName.trim();
     const missingAmount = !amount;
     if (missingVendor || missingAmount) {
       setVendorError(missingVendor);
@@ -66,7 +69,9 @@ export function QuoteModal({
 
     let resolvedVendorId: string | null = null;
     let resolvedVendorName = "";
-    if (vendorMode === "existing") {
+    if (vendorMode === "none") {
+      resolvedVendorName = label.trim();
+    } else if (vendorMode === "existing") {
       resolvedVendorId = vendorId;
       resolvedVendorName = vendors.find((v) => v.id === vendorId)?.name ?? "";
     } else {
@@ -136,7 +141,7 @@ export function QuoteModal({
         <div>
           <span className="mb-1.5 block text-sm font-medium">Vendor</span>
           <div className="mb-2 flex gap-2">
-            {(["existing", "new"] as const).map((mode) => (
+            {(["none", "existing", "new"] as const).map((mode) => (
               <button
                 key={mode}
                 type="button"
@@ -148,11 +153,20 @@ export function QuoteModal({
                   vendorMode === mode ? "border-primaryStrong bg-primary/10 text-primaryStrong" : "border-line text-muted"
                 }`}
               >
-                {mode === "existing" ? "Select existing" : "Create new"}
+                {mode === "none" ? "No vendor" : mode === "existing" ? "Select existing" : "Create new"}
               </button>
             ))}
           </div>
-          {vendorMode === "existing" ? (
+          {vendorMode === "none" ? (
+            <Input
+              value={label}
+              onChange={(e) => {
+                setLabel(e.target.value);
+                if (vendorError) setVendorError(false);
+              }}
+              placeholder="What's it for? e.g. Florist estimate"
+            />
+          ) : vendorMode === "existing" ? (
             <Select
               value={vendorId}
               onChange={(e) => {
