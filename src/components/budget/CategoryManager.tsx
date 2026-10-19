@@ -59,6 +59,10 @@ export function CategoryManager() {
         .from("expenses")
         .update({ category_id: uncategorised.id })
         .eq("category_id", id);
+      await supabase
+        .from("expense_quotes")
+        .update({ category_id: uncategorised.id })
+        .eq("category_id", id);
     }
     await supabase.from("expense_categories").delete().eq("id", id);
     refresh();
@@ -138,7 +142,7 @@ export function CategoryManager() {
         title="Remove category"
         message={
           removingCategory
-            ? `Remove "${removingCategory.name}"? Any expenses in it move to Uncategorised — nothing is deleted.`
+            ? `Remove "${removingCategory.name}"? Any expenses and quotes in it move to Uncategorised — nothing is deleted.`
             : ""
         }
         onConfirm={() => removingCategory && removeCategory(removingCategory.id)}
