@@ -8,6 +8,7 @@ import { useWedding } from "@/lib/wedding/WeddingProvider";
 import { useExpenses } from "@/lib/hooks/useExpenses";
 import { useCategories } from "@/lib/hooks/useCategories";
 import { useVendors } from "@/lib/hooks/useVendors";
+import { useQuotes } from "@/lib/hooks/useQuotes";
 import { categoryTotals, weddingTotals } from "@/lib/utils/budget";
 import { formatCurrency, sum } from "@/lib/utils/currency";
 import { computeExpenseTotals, PAYMENT_STATUS_LABEL } from "@/lib/utils/paymentStatus";
@@ -21,8 +22,11 @@ import { BudgetBreakdownChart } from "@/components/budget/BudgetBreakdownChart";
 import { AddCategoryForm } from "@/components/budget/AddCategoryForm";
 import { ReorderCategoriesModal } from "@/components/budget/ReorderCategoriesModal";
 import { UpcomingPaymentsModal } from "@/components/budget/UpcomingPaymentsModal";
+import { QuoteModal } from "@/components/budget/QuoteModal";
+import { CompareQuotesModal } from "@/components/budget/CompareQuotesModal";
 import { canEdit } from "@/lib/utils/permissions";
 import type { ExpenseWithInstalments } from "@/lib/types/domain";
+import type { ExpenseQuote } from "@/lib/types/database";
 
 type CategorySort = "alphabetical" | "custom";
 const CATEGORY_SORT_STORAGE_KEY = "wedding-planner:budget-category-sort";
@@ -33,7 +37,8 @@ export default function BudgetPage() {
   const weddingId = wedding?.id;
   const { expenses, refresh: refreshExpenses } = useExpenses(weddingId);
   const { categories, refresh: refreshCategories } = useCategories(weddingId);
-  const { vendors } = useVendors(weddingId);
+  const { vendors, refresh: refreshVendors } = useVendors(weddingId);
+  const { quotes, refresh: refreshQuotes } = useQuotes(weddingId);
 
   const [modalOpen, setModalOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<ExpenseWithInstalments | null>(null);
@@ -42,6 +47,13 @@ export default function BudgetPage() {
   // reopening it for a different expense (or for "add" after an edit) would
   // keep showing whatever was loaded the first time the modal ever opened.
   const [modalKey, setModalKey] = useState(0);
+  // Set when the expense modal was opened by accepting a quote.
+  const [acceptingQuote, setAcceptingQuote] = useState<ExpenseQuote | null>(null);
+  const [quoteModalOpen, setQuoteModalOpen] = useState(false);
+  const [editingQuote, setEditingQuote] = useState<ExpenseQuote | null>(null);
+  const [quoteCategoryId, setQuoteCategoryId] = useState<string | null>(null);
+  const [quoteModalKey, setQuoteModalKey] = useState(0);
+  const [comparingCategoryId, setComparingCategoryId] = useState<string | null>(null);
   const [reorderOpen, setReorderOpen] = useState(false);
   const [upcomingOpen, setUpcomingOpen] = useState(false);
   // Purely a display preference (not shared data), so it lives in
@@ -59,6 +71,7 @@ export default function BudgetPage() {
 
   function openEdit(expense: ExpenseWithInstalments) {
     setEditingExpense(expense);
+    setAcceptingQuote(null);
     setModalKey((k) => k + 1);
     setModalOpen(true);
   }
@@ -102,13 +115,39 @@ export default function BudgetPage() {
   function refresh() {
     refreshExpenses();
     refreshCategories();
+    refreshQuotes();
+    refreshVendors();
   }
 
   function openAdd() {
     setEditingExpense(null);
+    setAcceptingQuote(null);
     setModalKey((k) => k + 1);
     setModalOpen(true);
   }
+
+  function openAddQuote(categoryId: string | null) {
+    setEditingQuote(null);
+    setQuoteCategoryId(categoryId);
+    setQuoteModalKey((k) => k + 1);
+    setQuoteModalOpen(true);
+  }
+
+  function openEditQuote(quote: ExpenseQuote) {
+    setEditingQuote(quote);
+    setQuoteModalKey((k) => k + 1);
+    setQuoteModalOpen(true);
+  }
+
+  function openAcceptQuote(quote: ExpenseQuote) {
+    setComparingCategoryId(null);
+    setEditingExpense(null);
+    setAcceptingQuote(quote);
+    setModalKey((k) => k + 1);
+    setModalOpen(true);
+  }
+
+  const comparingCategory = byCategory.find((c) => c.categoryId === comparingCategoryId) ?? null;
 
   function exportCsv() {
     const rows = expenses.map((e) => {
@@ -206,9 +245,14 @@ export default function BudgetPage() {
               key={cat.categoryId}
               totals={cat}
               expenses={expenses.filter((e) => e.category_id === cat.categoryId)}
+              quotes={quotes.filter((q) => q.category_id === cat.categoryId)}
               vendors={vendors}
               currency={wedding?.currency}
               onEditExpense={openEdit}
+              onAddQuote={() => openAddQuote(cat.categoryId)}
+              onEditQuote={openEditQuote}
+              onAcceptQuote={openAcceptQuote}
+              onCompareQuotes={() => setComparingCategoryId(cat.categoryId)}
               onChanged={refresh}
             />
           ))}
@@ -230,7 +274,27 @@ export default function BudgetPage() {
         categories={categories}
         vendors={vendors}
         expense={editingExpense}
+        fromQuote={acceptingQuote}
         onSaved={refresh}
+      />
+      <QuoteModal
+        key={`quote-${quoteModalKey}`}
+        open={quoteModalOpen}
+        onClose={() => setQuoteModalOpen(false)}
+        categories={categories}
+        vendors={vendors}
+        quote={editingQuote}
+        defaultCategoryId={quoteCategoryId}
+        onSaved={refresh}
+      />
+      <CompareQuotesModal
+        open={comparingCategoryId !== null}
+        onClose={() => setComparingCategoryId(null)}
+        category={comparingCategory}
+        quotes={quotes.filter((q) => q.category_id === comparingCategoryId && q.status === "considering")}
+        currency={wedding?.currency}
+        onAccept={openAcceptQuote}
+        onChanged={refresh}
       />
       <ReorderCategoriesModal
         open={reorderOpen}

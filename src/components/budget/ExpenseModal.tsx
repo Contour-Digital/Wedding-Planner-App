@@ -8,7 +8,7 @@ import { Modal } from "@/components/ui/Modal";
 import { Button } from "@/components/ui/Button";
 import { Field, Input, Select, Textarea } from "@/components/ui/Input";
 import { formatCurrency, sum } from "@/lib/utils/currency";
-import type { ExpenseCategory, ExpenseInstalment, InstalmentKind, ReminderDays } from "@/lib/types/database";
+import type { ExpenseCategory, ExpenseInstalment, ExpenseQuote, InstalmentKind, ReminderDays } from "@/lib/types/database";
 import type { ExpenseWithInstalments } from "@/lib/types/domain";
 import type { VendorWithRelations } from "@/lib/hooks/useVendors";
 
@@ -49,6 +49,7 @@ export function ExpenseModal({
   vendors,
   expense,
   defaultVendorId,
+  fromQuote,
   onSaved,
 }: {
   open: boolean;
@@ -60,27 +61,36 @@ export function ExpenseModal({
   // vendor's own detail page) — ignored once an existing expense's own
   // vendor_id takes over.
   defaultVendorId?: string;
+  // Accepting a quote: the form opens filled in from it (vendor, category,
+  // amount, notes, and a Balance instalment ready for its due date), and
+  // saving marks the quote accepted and the vendor Booked.
+  fromQuote?: ExpenseQuote | null;
   onSaved: () => void;
 }) {
   const { wedding, user } = useWedding();
   const supabase = createClient();
 
-  const [name, setName] = useState(expense?.name ?? "");
-  const [categoryId, setCategoryId] = useState(expense?.category_id ?? categories[0]?.id ?? "");
-  const [vendorMode, setVendorMode] = useState<"none" | "existing" | "new">(
-    expense?.vendor_id || defaultVendorId ? "existing" : "none"
+  const [name, setName] = useState(expense?.name ?? fromQuote?.vendor_name ?? "");
+  const [categoryId, setCategoryId] = useState(
+    expense?.category_id ?? fromQuote?.category_id ?? categories[0]?.id ?? ""
   );
-  const [vendorId, setVendorId] = useState(expense?.vendor_id ?? defaultVendorId ?? "");
-  const [newVendorName, setNewVendorName] = useState("");
+  const [vendorMode, setVendorMode] = useState<"none" | "existing" | "new">(
+    expense?.vendor_id || defaultVendorId || fromQuote?.vendor_id ? "existing" : fromQuote ? "new" : "none"
+  );
+  const [vendorId, setVendorId] = useState(expense?.vendor_id ?? defaultVendorId ?? fromQuote?.vendor_id ?? "");
+  const [newVendorName, setNewVendorName] = useState(fromQuote && !fromQuote.vendor_id ? fromQuote.vendor_name : "");
   const [newVendorContactName, setNewVendorContactName] = useState("");
   const [newVendorContactEmail, setNewVendorContactEmail] = useState("");
   const [newVendorContactPhone, setNewVendorContactPhone] = useState("");
-  const [totalAmount, setTotalAmount] = useState(expense ? String(expense.total_amount) : "");
+  const [totalAmount, setTotalAmount] = useState(
+    expense ? String(expense.total_amount) : fromQuote ? String(fromQuote.amount) : ""
+  );
   const [depositAmount, setDepositAmount] = useState(expense ? String(expense.deposit_amount) : "0");
   const [isGift, setIsGift] = useState(expense?.is_gift ?? false);
-  const [notes, setNotes] = useState(expense?.notes ?? "");
+  const [notes, setNotes] = useState(expense?.notes ?? fromQuote?.notes ?? "");
   const [instalments, setInstalments] = useState<DraftInstalment[]>(
-    expense?.instalments.map(toDraft) ?? []
+    expense?.instalments.map(toDraft) ??
+      (fromQuote ? [{ amount: "", due_date: "", paid: false, reminder_days: "", label: "", kind: "balance" }] : [])
   );
   const [saving, setSaving] = useState(false);
   const [nameError, setNameError] = useState(false);
@@ -194,6 +204,26 @@ export function ExpenseModal({
       }
     }
 
+    if (fromQuote && expenseId) {
+      await supabase
+        .from("expense_quotes")
+        .update({ status: "accepted", expense_id: expenseId, updated_at: new Date().toISOString() })
+        .eq("id", fromQuote.id);
+      // Going ahead with a quote means the vendor's locked in, and an
+      // expense only counts toward the budget once its vendor is Booked.
+      if (vendorMode === "existing" && resolvedVendorId) {
+        await supabase.from("vendors").update({ status: "booked" }).eq("id", resolvedVendorId);
+      }
+      await logActivity(supabase, {
+        weddingId: wedding.id,
+        userId: user.id,
+        actionType: "quote.accepted",
+        description: `Accepted the quote from ${fromQuote.vendor_name}.`,
+        entityType: "expense_quote",
+        entityId: fromQuote.id,
+      });
+    }
+
     await logActivity(supabase, {
       weddingId: wedding.id,
       userId: user.id,
@@ -209,8 +239,14 @@ export function ExpenseModal({
   }
 
   return (
-    <Modal open={open} onClose={onClose} title={expense ? "Edit expense" : "Add expense"}>
+    <Modal open={open} onClose={onClose} title={expense ? "Edit expense" : fromQuote ? "Accept quote" : "Add expense"}>
       <div className="space-y-4">
+        {fromQuote && (
+          <p className="rounded-xl bg-primary/10 p-3 text-xs text-ink">
+            Saving turns the {fromQuote.vendor_name} quote into an expense and marks the vendor as Booked. Add the
+            due date for each payment below.
+          </p>
+        )}
         <Field label="Name" error={nameError}>
           <Input
             value={name}

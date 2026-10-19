@@ -191,6 +191,25 @@ export interface ExpenseInstalment {
   created_at: string;
 }
 
+export type QuoteStatus = "considering" | "accepted" | "declined";
+
+// A price the couple is weighing up under a budget category. Never counts
+// toward any budget total; accepting one turns it into an expense.
+export interface ExpenseQuote {
+  id: string;
+  wedding_id: string;
+  category_id: string | null;
+  vendor_id: string | null;
+  vendor_name: string;
+  amount: number;
+  notes: string | null;
+  status: QuoteStatus;
+  // The expense an accepted quote became.
+  expense_id: string | null;
+  created_at: string;
+  updated_at: string;
+}
+
 export interface Task {
   id: string;
   wedding_id: string;
