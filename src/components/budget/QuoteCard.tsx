@@ -42,11 +42,15 @@ const pillClass =
 export function QuoteCard({
   quote,
   currency,
+  categoryName,
   onEdit,
   onAccept,
   onChanged,
 }: {
   quote: ExpenseQuote;
+  // Shown on a vendor's page, where the category is the useful context
+  // rather than the vendor's own name.
+  categoryName?: string;
   currency?: string;
   onEdit: () => void;
   onAccept: () => void;
@@ -75,7 +79,10 @@ export function QuoteCard({
               quote.vendor_name
             )}
           </p>
-          <p className="text-xs text-muted">{declined ? "Declined" : "Quote, considering"}</p>
+          <p className="text-xs text-muted">
+            {declined ? "Declined" : "Quote, considering"}
+            {categoryName ? ` · ${categoryName}` : ""}
+          </p>
         </div>
         <p className="font-semibold text-muted">{formatCurrency(quote.amount, currency)}</p>
       </div>

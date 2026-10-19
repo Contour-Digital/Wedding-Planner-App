@@ -75,10 +75,10 @@ export function ExpenseModal({
     expense?.category_id ?? fromQuote?.category_id ?? categories[0]?.id ?? ""
   );
   const [vendorMode, setVendorMode] = useState<"none" | "existing" | "new">(
-    expense?.vendor_id || defaultVendorId || fromQuote?.vendor_id ? "existing" : fromQuote ? "new" : "none"
+    expense?.vendor_id || defaultVendorId || fromQuote?.vendor_id ? "existing" : "none"
   );
   const [vendorId, setVendorId] = useState(expense?.vendor_id ?? defaultVendorId ?? fromQuote?.vendor_id ?? "");
-  const [newVendorName, setNewVendorName] = useState(fromQuote && !fromQuote.vendor_id ? fromQuote.vendor_name : "");
+  const [newVendorName, setNewVendorName] = useState("");
   const [newVendorContactName, setNewVendorContactName] = useState("");
   const [newVendorContactEmail, setNewVendorContactEmail] = useState("");
   const [newVendorContactPhone, setNewVendorContactPhone] = useState("");
@@ -243,7 +243,8 @@ export function ExpenseModal({
       <div className="space-y-4">
         {fromQuote && (
           <p className="rounded-xl bg-primary/10 p-3 text-xs text-ink">
-            Saving turns the {fromQuote.vendor_name} quote into an expense and marks the vendor as Booked. Add the
+            Saving turns the {fromQuote.vendor_name} quote into an expense
+            {fromQuote.vendor_id ? " and marks the vendor as Booked" : ""}. Add the
             due date for each payment below.
           </p>
         )}

@@ -8,6 +8,7 @@ import { useWedding } from "@/lib/wedding/WeddingProvider";
 import { useVendors } from "@/lib/hooks/useVendors";
 import { useExpenses } from "@/lib/hooks/useExpenses";
 import { useCategories } from "@/lib/hooks/useCategories";
+import { useQuotes } from "@/lib/hooks/useQuotes";
 import { Card } from "@/components/ui/Card";
 import { Button } from "@/components/ui/Button";
 import { VendorStatusBadge } from "@/components/vendors/VendorStatusBadge";
@@ -17,10 +18,13 @@ import { ContactManager } from "@/components/vendors/ContactManager";
 import { DocumentManager } from "@/components/vendors/DocumentManager";
 import { PaymentStatusBadge } from "@/components/budget/PaymentStatusBadge";
 import { ExpenseModal } from "@/components/budget/ExpenseModal";
+import { QuoteModal } from "@/components/budget/QuoteModal";
+import { QuoteCard } from "@/components/budget/QuoteCard";
 import { formatCurrency, sum } from "@/lib/utils/currency";
 import { computeExpenseTotals } from "@/lib/utils/paymentStatus";
 import { canEdit, canSeeFinancials } from "@/lib/utils/permissions";
 import type { ExpenseWithInstalments } from "@/lib/types/domain";
+import type { ExpenseQuote } from "@/lib/types/database";
 
 export default function VendorDetailPage() {
   const { vendorId } = useParams<{ vendorId: string }>();
@@ -28,6 +32,7 @@ export default function VendorDetailPage() {
   const { vendors, refresh } = useVendors(wedding?.id);
   const { expenses, refresh: refreshExpenses } = useExpenses(wedding?.id);
   const { categories } = useCategories(wedding?.id);
+  const { quotes, refresh: refreshQuotes } = useQuotes(wedding?.id);
   const [editOpen, setEditOpen] = useState(false);
   const [editingExpense, setEditingExpense] = useState<ExpenseWithInstalments | null>(null);
   const [expenseModalOpen, setExpenseModalOpen] = useState(false);
@@ -35,19 +40,47 @@ export default function VendorDetailPage() {
   // `expense` on mount) remounts fresh instead of showing whichever
   // expense's data happened to be loaded first.
   const [expenseModalKey, setExpenseModalKey] = useState(0);
+  // Set when the expense modal was opened by accepting one of this
+  // vendor's quotes.
+  const [acceptingQuote, setAcceptingQuote] = useState<ExpenseQuote | null>(null);
+  const [quoteModalOpen, setQuoteModalOpen] = useState(false);
+  const [editingQuote, setEditingQuote] = useState<ExpenseQuote | null>(null);
+  const [quoteModalKey, setQuoteModalKey] = useState(0);
+  const [showDeclined, setShowDeclined] = useState(false);
   const showFinancials = canSeeFinancials(role);
   const editable = canEdit(role);
 
   function openEditExpense(exp: ExpenseWithInstalments) {
     setEditingExpense(exp);
+    setAcceptingQuote(null);
     setExpenseModalKey((k) => k + 1);
     setExpenseModalOpen(true);
   }
 
   function openAddExpense() {
     setEditingExpense(null);
+    setAcceptingQuote(null);
     setExpenseModalKey((k) => k + 1);
     setExpenseModalOpen(true);
+  }
+
+  function openAcceptQuote(quote: ExpenseQuote) {
+    setEditingExpense(null);
+    setAcceptingQuote(quote);
+    setExpenseModalKey((k) => k + 1);
+    setExpenseModalOpen(true);
+  }
+
+  function openQuote(quote: ExpenseQuote | null) {
+    setEditingQuote(quote);
+    setQuoteModalKey((k) => k + 1);
+    setQuoteModalOpen(true);
+  }
+
+  function refreshAll() {
+    refresh();
+    refreshExpenses();
+    refreshQuotes();
   }
 
   const vendor = vendors.find((v) => v.id === vendorId);
@@ -65,6 +98,11 @@ export default function VendorDetailPage() {
   const committed = sum(linkedExpenses.filter((e) => !e.is_gift).map((e) => e.total_amount));
   const paid = sum(totals.filter((t) => t.status !== "gift").map((t) => t.paidAmount));
   const balance = committed - paid;
+  // Accepted quotes already show above as the expense they became.
+  const vendorQuotes = quotes.filter((q) => q.vendor_id === vendor.id);
+  const consideringQuotes = vendorQuotes.filter((q) => q.status === "considering");
+  const declinedQuotes = vendorQuotes.filter((q) => q.status === "declined");
+  const categoryName = (id: string | null) => categories.find((c) => c.id === id)?.name;
 
   return (
     <div>
@@ -146,6 +184,50 @@ export default function VendorDetailPage() {
           </Card>
         )}
 
+        {showFinancials && (
+          <Card>
+            <div className="mb-3 flex items-center justify-between">
+              <h3 className="font-display text-lg font-semibold">Quotes</h3>
+              {editable && (
+                <Button variant="secondary" onClick={() => openQuote(null)}>
+                  + Add quote
+                </Button>
+              )}
+            </div>
+            <div className="space-y-2">
+              {consideringQuotes.map((q) => (
+                <QuoteCard
+                  key={q.id}
+                  quote={q}
+                  categoryName={categoryName(q.category_id)}
+                  currency={wedding?.currency}
+                  onEdit={() => openQuote(q)}
+                  onAccept={() => openAcceptQuote(q)}
+                  onChanged={refreshQuotes}
+                />
+              ))}
+              {consideringQuotes.length === 0 && <p className="text-sm text-muted">No quotes being considered.</p>}
+              {declinedQuotes.length > 0 && (
+                <button className="text-xs font-medium text-muted underline" onClick={() => setShowDeclined((v) => !v)}>
+                  {showDeclined ? "Hide" : "Show"} declined quotes ({declinedQuotes.length})
+                </button>
+              )}
+              {showDeclined &&
+                declinedQuotes.map((q) => (
+                  <QuoteCard
+                    key={q.id}
+                    quote={q}
+                    categoryName={categoryName(q.category_id)}
+                    currency={wedding?.currency}
+                    onEdit={() => openQuote(q)}
+                    onAccept={() => openAcceptQuote(q)}
+                    onChanged={refreshQuotes}
+                  />
+                ))}
+            </div>
+          </Card>
+        )}
+
         <ContactManager vendorId={vendor.id} contacts={vendor.contacts} editable={editable} onChanged={refresh} />
         <DocumentManager
           weddingId={wedding!.id}
@@ -165,7 +247,20 @@ export default function VendorDetailPage() {
           vendors={vendors}
           expense={editingExpense}
           defaultVendorId={vendor.id}
-          onSaved={refreshExpenses}
+          fromQuote={acceptingQuote}
+          onSaved={refreshAll}
+        />
+      )}
+      {editable && (
+        <QuoteModal
+          key={`quote-${quoteModalKey}`}
+          open={quoteModalOpen}
+          onClose={() => setQuoteModalOpen(false)}
+          categories={categories}
+          vendors={vendors}
+          quote={editingQuote}
+          defaultVendorId={vendor.id}
+          onSaved={refreshAll}
         />
       )}
     </div>
