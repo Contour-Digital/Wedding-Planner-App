@@ -32,7 +32,17 @@ export function QuoteModal({
   const { wedding, user } = useWedding();
   const supabase = createClient();
 
-  const [vendorName, setVendorName] = useState(quote?.vendor_name ?? "");
+  // Same choice as the expense form, minus "No vendor": a quote is always
+  // from someone. An older quote saved before it was linked to a vendor
+  // opens in "Create new" with its name filled in.
+  const [vendorMode, setVendorMode] = useState<"existing" | "new">(
+    quote && !quote.vendor_id ? "new" : vendors.length > 0 ? "existing" : "new"
+  );
+  const [vendorId, setVendorId] = useState(quote?.vendor_id ?? "");
+  const [newVendorName, setNewVendorName] = useState(quote && !quote.vendor_id ? quote.vendor_name : "");
+  const [newVendorContactName, setNewVendorContactName] = useState("");
+  const [newVendorContactEmail, setNewVendorContactEmail] = useState("");
+  const [newVendorContactPhone, setNewVendorContactPhone] = useState("");
   const [categoryId, setCategoryId] = useState(
     quote?.category_id ?? defaultCategoryId ?? categories[0]?.id ?? ""
   );
@@ -45,7 +55,7 @@ export function QuoteModal({
 
   async function handleSave() {
     if (!wedding || !user) return;
-    const missingVendor = !vendorName.trim();
+    const missingVendor = vendorMode === "existing" ? !vendorId : !newVendorName.trim();
     const missingAmount = !amount;
     if (missingVendor || missingAmount) {
       setVendorError(missingVendor);
@@ -54,16 +64,37 @@ export function QuoteModal({
     }
     setSaving(true);
 
-    // Typing the name of a vendor already on the Vendors page links the
-    // quote to it, so accepting it later books that vendor rather than
-    // creating a duplicate.
-    const trimmed = vendorName.trim();
-    const match = vendors.find((v) => v.name.trim().toLowerCase() === trimmed.toLowerCase());
+    let resolvedVendorId: string | null = null;
+    let resolvedVendorName = "";
+    if (vendorMode === "existing") {
+      resolvedVendorId = vendorId;
+      resolvedVendorName = vendors.find((v) => v.id === vendorId)?.name ?? "";
+    } else {
+      resolvedVendorName = newVendorName.trim();
+      const { data: vendorRow } = await supabase
+        .from("vendors")
+        // They've sent a price but aren't booked yet; accepting the quote
+        // later is what moves them to Booked.
+        .insert({ wedding_id: wedding.id, name: resolvedVendorName, status: "quote_received" })
+        .select()
+        .single();
+      resolvedVendorId = vendorRow?.id ?? null;
+
+      if (resolvedVendorId && newVendorContactName.trim()) {
+        await supabase.from("vendor_contacts").insert({
+          vendor_id: resolvedVendorId,
+          name: newVendorContactName.trim(),
+          email: newVendorContactEmail.trim() || null,
+          phone: newVendorContactPhone.trim() || null,
+        });
+      }
+    }
+
     const payload = {
       wedding_id: wedding.id,
       category_id: categoryId || null,
-      vendor_id: match?.id ?? null,
-      vendor_name: match?.name ?? trimmed,
+      vendor_id: resolvedVendorId,
+      vendor_name: resolvedVendorName,
       amount: Number(amount) || 0,
       notes: notes.trim() || null,
       updated_at: new Date().toISOString(),
@@ -102,22 +133,73 @@ export function QuoteModal({
   return (
     <Modal open={open} onClose={onClose} title={quote ? "Edit quote" : "Add quote"}>
       <div className="space-y-4">
-        <Field label="Vendor" error={vendorError}>
-          <Input
-            value={vendorName}
-            list="quote-vendor-options"
-            onChange={(e) => {
-              setVendorName(e.target.value);
-              if (vendorError) setVendorError(false);
-            }}
-            placeholder="Business name"
-          />
-        </Field>
-        <datalist id="quote-vendor-options">
-          {vendors.map((v) => (
-            <option key={v.id} value={v.name} />
-          ))}
-        </datalist>
+        <div>
+          <span className="mb-1.5 block text-sm font-medium">Vendor</span>
+          <div className="mb-2 flex gap-2">
+            {(["existing", "new"] as const).map((mode) => (
+              <button
+                key={mode}
+                type="button"
+                onClick={() => {
+                  setVendorMode(mode);
+                  setVendorError(false);
+                }}
+                className={`rounded-full border px-3 py-1.5 text-xs font-medium ${
+                  vendorMode === mode ? "border-primaryStrong bg-primary/10 text-primaryStrong" : "border-line text-muted"
+                }`}
+              >
+                {mode === "existing" ? "Select existing" : "Create new"}
+              </button>
+            ))}
+          </div>
+          {vendorMode === "existing" ? (
+            <Select
+              value={vendorId}
+              onChange={(e) => {
+                setVendorId(e.target.value);
+                if (vendorError) setVendorError(false);
+              }}
+            >
+              <option value="">Choose a vendor…</option>
+              {vendors.map((v) => (
+                <option key={v.id} value={v.id}>
+                  {v.name}
+                </option>
+              ))}
+            </Select>
+          ) : (
+            <div className="space-y-2">
+              <Input
+                value={newVendorName}
+                onChange={(e) => {
+                  setNewVendorName(e.target.value);
+                  if (vendorError) setVendorError(false);
+                }}
+                placeholder="Vendor / business name"
+                className={vendorError ? "border-danger" : undefined}
+              />
+              <p className="text-xs text-muted">Contact details (optional) — can also be added later on the vendor&apos;s page</p>
+              <Input
+                value={newVendorContactName}
+                onChange={(e) => setNewVendorContactName(e.target.value)}
+                placeholder="Contact name"
+              />
+              <Input
+                type="email"
+                value={newVendorContactEmail}
+                onChange={(e) => setNewVendorContactEmail(e.target.value)}
+                placeholder="Contact email"
+              />
+              <Input
+                type="tel"
+                value={newVendorContactPhone}
+                onChange={(e) => setNewVendorContactPhone(e.target.value)}
+                placeholder="Contact phone"
+              />
+            </div>
+          )}
+          {vendorError && <span className="mt-1.5 block text-xs text-danger">Required</span>}
+        </div>
 
         <Field label="Category">
           <Select value={categoryId} onChange={(e) => setCategoryId(e.target.value)}>
